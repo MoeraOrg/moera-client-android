@@ -1,12 +1,16 @@
 package org.moera.android;
 
+import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.view.View;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NotificationChannelCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,10 +27,25 @@ public class MainActivity extends AppCompatActivity {
         createNotificationChannel();
 
         setContentView(R.layout.activity_main);
+
         WebView webView = getWebView();
+
+        SwipeRefreshLayout swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout);
+        swipeRefreshLayout.setOnRefreshListener(webView::reload);
+
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
+        webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        webView.setWebViewClient(new WebViewClient() {
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                swipeRefreshLayout.setRefreshing(false);
+            }
+
+        });
         webView.loadUrl(WEB_CLIENT_URL);
+
     }
 
     @Override
