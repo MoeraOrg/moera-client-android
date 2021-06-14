@@ -3,7 +3,6 @@ package org.moera.android;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -51,6 +50,10 @@ public class MainActivity extends AppCompatActivity {
         String url = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE)
                 .getString(Preferences.CURRENT_URL, WEB_CLIENT_URL);
         webView.loadUrl(url);
+
+        String homePage = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE)
+                .getString(Preferences.HOME_LOCATION, null);
+        PushWorker.schedule(this, homePage, true); // FIXME replace
     }
 
     @Override
@@ -64,8 +67,6 @@ public class MainActivity extends AppCompatActivity {
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT);
         NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
         notificationManager.notify(0, builder.build());
-
-        startPushService();
     }
 
     private void createNotificationChannel() {
@@ -77,18 +78,6 @@ public class MainActivity extends AppCompatActivity {
         channels.add(builder.build());
         NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
         notificationManager.createNotificationChannelsCompat(channels);
-    }
-
-    private void startPushService() {
-        String url = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE)
-                .getString(Preferences.HOME_LOCATION, null);
-        if (url == null) {
-            return;
-        }
-
-        Intent intent = new Intent(this, PushService.class);
-        intent.setData(Uri.parse(url));
-        startService(intent);
     }
 
     @Override

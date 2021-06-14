@@ -1,11 +1,11 @@
 package org.moera.android;
 
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
-import android.net.Uri;
 import android.util.Log;
 import android.webkit.JavascriptInterface;
+
+import java.util.Objects;
 
 import static android.content.Context.MODE_PRIVATE;
 
@@ -29,14 +29,17 @@ public class JsInterface {
     public void connectedToHome(String url) {
         Log.i(JsInterface.class.getSimpleName(), "Home: " + url);
 
-        SharedPreferences.Editor prefs =
-                context.getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE).edit();
-        prefs.putString(Preferences.HOME_LOCATION, url);
-        prefs.apply();
+        SharedPreferences prefs = context.getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
 
-        Intent intent = new Intent(context, PushService.class);
-        intent.setData(Uri.parse(url));
-        context.startService(intent);
+        if (Objects.equals(url, prefs.getString(Preferences.HOME_LOCATION, null))) {
+            return;
+        }
+
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putString(Preferences.HOME_LOCATION, url);
+        editor.apply();
+
+        PushWorker.schedule(context, url, true);
     }
 
 }
