@@ -21,6 +21,8 @@ public class PushWorker extends Worker {
 
     private static final String TAG = PushWorker.class.getSimpleName();
 
+    private static Thread thread;
+
     public PushWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
     }
@@ -29,9 +31,11 @@ public class PushWorker extends Worker {
     @Override
     public Result doWork() {
         Log.i(TAG, "Getting notifications from " + getInputData().getString(HOME_PAGE));
+
+        thread = Thread.currentThread();
         int i = 0;
         try {
-            while (true) {
+            while (!isStopped()) {
                 Log.i(TAG, "Passed " + (i++) + " minutes");
                 Thread.sleep(60000);
             }
@@ -39,7 +43,16 @@ public class PushWorker extends Worker {
             Log.i(TAG, "Interrupted!");
             // just exit
         }
+        thread = null;
+
         return Result.success();
+    }
+
+    @Override
+    public void onStopped() {
+        if (thread != null) {
+            thread.interrupt();
+        }
     }
 
     public static void schedule(Context context, String homePage, boolean replace) {
