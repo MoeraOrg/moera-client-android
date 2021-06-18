@@ -1,7 +1,6 @@
 package org.moera.android;
 
-import android.content.Intent;
-import android.net.Uri;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.webkit.WebView;
@@ -47,13 +46,14 @@ public class MainActivity extends AppCompatActivity {
 
         });
 
-        String url = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE)
-                .getString(Preferences.CURRENT_URL, WEB_CLIENT_URL);
+        SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
+
+        String url = prefs.getString(Preferences.CURRENT_URL, WEB_CLIENT_URL);
         webView.loadUrl(url);
 
-        String homePage = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE)
-                .getString(Preferences.HOME_LOCATION, null);
-        PushWorker.schedule(this, homePage, true); // FIXME replace
+        String homePage = prefs.getString(Preferences.HOME_LOCATION, null);
+        String homeToken = prefs.getString(Preferences.HOME_TOKEN, null);
+        PushWorker.schedule(this, homePage, homeToken, true); // FIXME replace
     }
 
     @Override
