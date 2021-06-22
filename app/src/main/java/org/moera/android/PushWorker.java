@@ -95,6 +95,7 @@ public class PushWorker extends Worker {
             }
             EventSource eventSource = eventSourceBuilder
                     .headers(headers)
+                    .lastEventId(getLastSeenMoment())
                     .connectionErrorHandler(t -> {
                         Log.e(TAG, "Connection error: " + t.getClass().getCanonicalName());
                         return ConnectionErrorHandler.Action.PROCEED;
@@ -121,6 +122,12 @@ public class PushWorker extends Worker {
                 .readTimeout(Duration.ofMinutes(30))
                 .reconnectTime(Duration.ofMinutes(30))
                 .maxReconnectTime(Duration.ofMinutes(30));
+    }
+
+    private String getLastSeenMoment() {
+        SharedPreferences prefs =
+                getApplicationContext().getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
+        return prefs.getString(Preferences.LAST_SEEN_MOMENT, "0");
     }
 
     @Override

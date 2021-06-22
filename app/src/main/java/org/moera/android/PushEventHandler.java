@@ -1,6 +1,7 @@
 package org.moera.android;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
 
 import androidx.core.app.NotificationChannelCompat;
@@ -18,6 +19,8 @@ import org.moera.android.model.StoryInfo;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static android.content.Context.MODE_PRIVATE;
 
 public class PushEventHandler implements EventHandler {
 
@@ -74,6 +77,7 @@ public class PushEventHandler implements EventHandler {
             Log.e(TAG, "Error parsing push message: " + messageEvent.getData());
             Log.e(TAG, "Exception:", e);
         }
+        storeLastSeenMoment(messageEvent.getLastEventId());
     }
 
     private void addStory(StoryInfo story) {
@@ -104,6 +108,13 @@ public class PushEventHandler implements EventHandler {
 
     private NotificationManagerCompat getNotificationManager() {
         return NotificationManagerCompat.from(context);
+    }
+
+    private void storeLastSeenMoment(String moment) {
+        SharedPreferences.Editor prefs =
+                context.getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE).edit();
+        prefs.putString(Preferences.LAST_SEEN_MOMENT, moment);
+        prefs.apply();
     }
 
     @Override
