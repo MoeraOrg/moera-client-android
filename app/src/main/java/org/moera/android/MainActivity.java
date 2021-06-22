@@ -1,6 +1,8 @@
 package org.moera.android;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.webkit.WebView;
@@ -16,6 +18,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
+
+    private static final String TAG = MainActivity.class.getSimpleName();
 
     public static final String WEB_CLIENT_URL = "https://web.moera.org";
     public static final String CHANNEL_ID = "org.moera.NotificationsChannel";
@@ -46,14 +50,25 @@ public class MainActivity extends AppCompatActivity {
 
         });
 
+        webView.loadUrl(getWebViewUrl());
+
         SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
-
-        String url = prefs.getString(Preferences.CURRENT_URL, WEB_CLIENT_URL);
-        webView.loadUrl(url);
-
         String homePage = prefs.getString(Preferences.HOME_LOCATION, null);
         String homeToken = prefs.getString(Preferences.HOME_TOKEN, null);
         PushWorker.schedule(this, homePage, homeToken, true); // FIXME replace
+    }
+
+    private String getWebViewUrl() {
+        if (getIntent().getAction().equals(Intent.ACTION_VIEW) && getIntent().getData() != null) {
+            Uri.Builder builder = Uri.parse(WEB_CLIENT_URL).buildUpon();
+            Uri intentUri = getIntent().getData();
+            return builder.encodedPath(intentUri.getEncodedPath())
+                    .encodedQuery(intentUri.getEncodedQuery())
+                    .build()
+                    .toString();
+        }
+        SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
+        return prefs.getString(Preferences.CURRENT_URL, WEB_CLIENT_URL);
     }
 
     @Override
