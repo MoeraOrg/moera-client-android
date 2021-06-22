@@ -1,7 +1,10 @@
-package org.moera.android;
+package org.moera.android.push;
 
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.util.Log;
 
 import androidx.core.app.NotificationChannelCompat;
@@ -14,13 +17,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.launchdarkly.eventsource.EventHandler;
 import com.launchdarkly.eventsource.MessageEvent;
 
+import org.moera.android.MainActivity;
+import org.moera.android.Preferences;
+import org.moera.android.R;
 import org.moera.android.model.PushContent;
 import org.moera.android.model.StoryInfo;
+import org.moera.android.model.StoryType;
+import org.moera.android.util.NodeLocation;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static android.content.Context.MODE_PRIVATE;
+import static androidx.core.app.NotificationCompat.CATEGORY_SOCIAL;
 
 public class PushEventHandler implements EventHandler {
 
@@ -91,8 +100,11 @@ public class PushEventHandler implements EventHandler {
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(story.getStoryType().getTitle())
                 .setContentText(summary)
+                .setContentIntent(getIntent(story))
+                .setCategory(CATEGORY_SOCIAL)
                 .setStyle(bigTextStyle)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true);
         NotificationManagerCompat notificationManager = getNotificationManager();
         notificationManager.notify(story.getId(), 0, builder.build());
     }
@@ -104,6 +116,31 @@ public class PushEventHandler implements EventHandler {
 
     private String htmlToPlainText(String html) {
         return html.replaceAll("<[^>]+>", "");
+    }
+
+    private PendingIntent getIntent(StoryInfo story) {
+        Intent intent = new Intent(context, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        intent.setData(getTarget(story));
+        return PendingIntent.getActivity(context, 0, intent, 0);
+    }
+
+    private Uri getTarget(StoryInfo story) {
+        SharedPreferences prefs = context.getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
+        String homeRootPage = prefs.getString(Preferences.HOME_LOCATION, "");
+        String homeOwnerName = prefs.getString(Preferences.HOME_OWNER_NAME, "");
+
+        NodeLocation targetLocation = StoryType.getTarget(story);
+        String nodeName = targetLocation.getNodeName().equals(":")
+                ? homeOwnerName : targetLocation.getNodeName();
+
+        return Uri.parse(homeRootPage).buildUpon()
+                .appendPath("gotoname")
+                .appendQueryParameter("client", context.getString(R.string.web_client_url))
+                .appendQueryParameter("name", nodeName)
+                .appendQueryParameter("location", targetLocation.getHref())
+                .appendQueryParameter("trackingId", story.getTrackingId())
+                .build();
     }
 
     private NotificationManagerCompat getNotificationManager() {

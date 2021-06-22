@@ -1,4 +1,4 @@
-package org.moera.android;
+package org.moera.android.push;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -18,6 +18,8 @@ import androidx.work.WorkerParameters;
 
 import com.launchdarkly.eventsource.ConnectionErrorHandler;
 import com.launchdarkly.eventsource.EventSource;
+
+import org.moera.android.Preferences;
 
 import java.time.Duration;
 import java.util.UUID;
@@ -75,6 +77,8 @@ public class PushWorker extends Worker {
     @Override
     public Result doWork() {
         String homePage = getInputData().getString(HOME_PAGE);
+        String token = getInputData().getString(HOME_TOKEN);
+
         HttpUrl pushUrl = getPushUrl(homePage);
         if (pushUrl == null) {
             Log.i(TAG, "Unknown or malformed URL: " + homePage);
@@ -85,8 +89,7 @@ public class PushWorker extends Worker {
         thread = Thread.currentThread();
         try {
             Headers headers = new Headers.Builder()
-                    .add("Authorization",
-                            "Bearer " + getInputData().getString(HOME_TOKEN))
+                    .add("Authorization", "Bearer " + token)
                     .build();
             EventSource.Builder eventSourceBuilder =
                     new EventSource.Builder(new PushEventHandler(getApplicationContext()), pushUrl);

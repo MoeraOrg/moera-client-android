@@ -11,11 +11,14 @@ import android.webkit.WebViewClient;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import org.moera.android.push.PushEventHandler;
+import org.moera.android.push.PushWorker;
+
+import java.util.Objects;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
-
-    public static final String WEB_CLIENT_URL = "https://web.moera.org";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,20 +51,24 @@ public class MainActivity extends AppCompatActivity {
         SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
         String homePage = prefs.getString(Preferences.HOME_LOCATION, null);
         String homeToken = prefs.getString(Preferences.HOME_TOKEN, null);
-        PushWorker.schedule(this, homePage, homeToken, true); // FIXME replace
+        PushWorker.schedule(this, homePage, homeToken, false);
     }
 
     private String getWebViewUrl() {
-        if (getIntent().getAction().equals(Intent.ACTION_VIEW) && getIntent().getData() != null) {
-            Uri.Builder builder = Uri.parse(WEB_CLIENT_URL).buildUpon();
+        if (Objects.equals(getIntent().getAction(), Intent.ACTION_VIEW)
+                && getIntent().getData() != null) {
+            Uri.Builder builder = Uri.parse(getString(R.string.web_client_url)).buildUpon();
             Uri intentUri = getIntent().getData();
             return builder.encodedPath(intentUri.getEncodedPath())
                     .encodedQuery(intentUri.getEncodedQuery())
                     .build()
                     .toString();
         }
+        if (getIntent().getData() != null) {
+            return getIntent().getData().toString();
+        }
         SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
-        return prefs.getString(Preferences.CURRENT_URL, WEB_CLIENT_URL);
+        return prefs.getString(Preferences.CURRENT_URL, getString(R.string.web_client_url));
     }
 
     @Override

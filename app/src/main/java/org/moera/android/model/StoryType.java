@@ -3,6 +3,8 @@ package org.moera.android.model;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
+import org.moera.android.util.NodeLocation;
+
 public enum StoryType {
 
     POSTING_ADDED("Post added"),
@@ -51,6 +53,43 @@ public enum StoryType {
     @JsonCreator
     public static StoryType parse(String value) {
         return valueOf(value.toUpperCase().replace('-', '_'));
+    }
+
+    public static NodeLocation getTarget(StoryInfo storyInfo) {
+        String postingId = storyInfo.getPosting() != null ? storyInfo.getPosting().getId() : null;
+
+        switch (storyInfo.getStoryType()) {
+            case REACTION_ADDED_POSITIVE:
+            case REACTION_ADDED_NEGATIVE:
+                return new NodeLocation(":", String.format("/post/%s", postingId));
+
+            case MENTION_POSTING:
+            case POSTING_TASK_FAILED:
+            case POSTING_UPDATED:
+                return new NodeLocation(storyInfo.getRemoteNodeName(),
+                        String.format("/post/%s", storyInfo.getRemotePostingId()));
+
+            case SUBSCRIBER_ADDED:
+            case SUBSCRIBER_DELETED:
+                return new NodeLocation(storyInfo.getRemoteNodeName(), "/");
+
+            case COMMENT_ADDED:
+                return new NodeLocation(":", String.format("/post/%s?comment=%s",
+                        postingId, storyInfo.getRemoteCommentId()));
+
+            case MENTION_COMMENT:
+            case REPLY_COMMENT:
+            case COMMENT_REACTION_ADDED_POSITIVE:
+            case COMMENT_REACTION_ADDED_NEGATIVE:
+            case REMOTE_COMMENT_ADDED:
+            case COMMENT_TASK_FAILED:
+                return new NodeLocation(storyInfo.getRemoteNodeName(),
+                        String.format("/post/%s?comment=%s",
+                                storyInfo.getRemotePostingId(), storyInfo.getRemoteCommentId()));
+
+            default:
+                return new NodeLocation(":", "/");
+        }
     }
 
 }
