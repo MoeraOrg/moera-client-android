@@ -9,26 +9,19 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.NotificationChannelCompat;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
     public static final String WEB_CLIENT_URL = "https://web.moera.org";
-    public static final String CHANNEL_ID = "org.moera.NotificationsChannel";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        createNotificationChannel();
+        PushEventHandler.createNotificationChannel(this);
 
         setContentView(R.layout.activity_main);
 
@@ -69,30 +62,6 @@ public class MainActivity extends AppCompatActivity {
         }
         SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
         return prefs.getString(Preferences.CURRENT_URL, WEB_CLIENT_URL);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("Test")
-                .setContentText("Hi!")
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
-        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
-        notificationManager.notify(0, builder.build());
-    }
-
-    private void createNotificationChannel() {
-        NotificationChannelCompat.Builder builder = new NotificationChannelCompat.Builder(
-                    CHANNEL_ID,
-                    NotificationManagerCompat.IMPORTANCE_DEFAULT)
-                .setName(getString(R.string.channel_name));
-        List<NotificationChannelCompat> channels = new ArrayList<>();
-        channels.add(builder.build());
-        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
-        notificationManager.createNotificationChannelsCompat(channels);
     }
 
     @Override

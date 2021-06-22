@@ -89,7 +89,7 @@ public class PushWorker extends Worker {
                             "Bearer " + getInputData().getString(HOME_TOKEN))
                     .build();
             EventSource.Builder eventSourceBuilder =
-                    new EventSource.Builder(new PushEventHandler(), pushUrl);
+                    new EventSource.Builder(new PushEventHandler(getApplicationContext()), pushUrl);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 eventSourceBuilder = setEventSourceTimeouts(eventSourceBuilder);
             }

@@ -5,21 +5,31 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum StoryType {
 
-    POSTING_ADDED,
-    REACTION_ADDED_POSITIVE,
-    REACTION_ADDED_NEGATIVE,
-    MENTION_POSTING,
-    SUBSCRIBER_ADDED,
-    SUBSCRIBER_DELETED,
-    COMMENT_ADDED,
-    MENTION_COMMENT,
-    REPLY_COMMENT,
-    COMMENT_REACTION_ADDED_POSITIVE,
-    COMMENT_REACTION_ADDED_NEGATIVE,
-    REMOTE_COMMENT_ADDED,
-    POSTING_TASK_FAILED,
-    COMMENT_TASK_FAILED,
-    POSTING_UPDATED;
+    POSTING_ADDED("Post added"),
+    REACTION_ADDED_POSITIVE("Post supported"),
+    REACTION_ADDED_NEGATIVE("Post opposed"),
+    MENTION_POSTING("Mention in post"),
+    SUBSCRIBER_ADDED("Subscribed"),
+    SUBSCRIBER_DELETED("Unsubscribed"),
+    COMMENT_ADDED("Commented"),
+    MENTION_COMMENT("Mention in comment"),
+    REPLY_COMMENT("Reply to comment"),
+    COMMENT_REACTION_ADDED_POSITIVE("Comment supported"),
+    COMMENT_REACTION_ADDED_NEGATIVE("Comment opposed"),
+    REMOTE_COMMENT_ADDED("Commented"),
+    POSTING_TASK_FAILED("Operation failed"),
+    COMMENT_TASK_FAILED("Operation failed"),
+    POSTING_UPDATED("Post updated");
+
+    StoryType(String title) {
+        this.title = title;
+    }
+
+    private final String title;
+
+    public String getTitle() {
+        return title;
+    }
 
     @JsonValue
     public String getValue() {
