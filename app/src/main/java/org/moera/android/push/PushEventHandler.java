@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.launchdarkly.eventsource.EventHandler;
 import com.launchdarkly.eventsource.MessageEvent;
 
+import org.apache.commons.text.StringEscapeUtils;
 import org.moera.android.MainActivity;
 import org.moera.android.Preferences;
 import org.moera.android.R;
@@ -121,7 +122,8 @@ public class PushEventHandler implements EventHandler {
     }
 
     private String htmlToPlainText(String html) {
-        return html.replaceAll("<[^>]+>", "");
+        String text = html.replaceAll("<[^>]+>", "");
+        return StringEscapeUtils.unescapeHtml4(text);
     }
 
     private PendingIntent getIntent(StoryInfo story) {
