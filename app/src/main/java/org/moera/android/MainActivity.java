@@ -69,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
         SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
         String homePage = prefs.getString(Preferences.HOME_LOCATION, null);
         String homeToken = prefs.getString(Preferences.HOME_TOKEN, null);
-        PushWorker.schedule(this, homePage, homeToken, false);
+        PushWorker.schedule(this, homePage, homeToken, true);
     }
 
     private String getWebViewUrl() {

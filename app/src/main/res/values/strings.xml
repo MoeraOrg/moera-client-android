@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">Moera</string>
     <string name="channel_name">Moera Notifications</string>
+    <string name="mark_as_read">Mark as read</string>
     <string name="web_client_url">https://web.moera.org</string>
 </resources>

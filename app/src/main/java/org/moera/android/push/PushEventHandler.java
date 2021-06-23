@@ -19,7 +19,9 @@ import com.launchdarkly.eventsource.EventHandler;
 import com.launchdarkly.eventsource.MessageEvent;
 
 import org.apache.commons.text.StringEscapeUtils;
+import org.moera.android.Actions;
 import org.moera.android.MainActivity;
+import org.moera.android.MainReceiver;
 import org.moera.android.Preferences;
 import org.moera.android.R;
 import org.moera.android.model.PushContent;
@@ -106,7 +108,9 @@ public class PushEventHandler implements EventHandler {
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(story.getStoryType().getTitle())
                 .setContentText(summary)
-                .setContentIntent(getIntent(story))
+                .setContentIntent(getTapIntent(story))
+                .addAction(0, context.getString(R.string.mark_as_read),
+                        getMarkAsReadIntent(story))
                 .setCategory(CATEGORY_SOCIAL)
                 .setStyle(bigTextStyle)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -126,7 +130,7 @@ public class PushEventHandler implements EventHandler {
         return StringEscapeUtils.unescapeHtml4(text);
     }
 
-    private PendingIntent getIntent(StoryInfo story) {
+    private PendingIntent getTapIntent(StoryInfo story) {
         Intent intent = new Intent(context, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         intent.setData(getTarget(story));
@@ -149,6 +153,13 @@ public class PushEventHandler implements EventHandler {
                 .appendQueryParameter("location", targetLocation.getHref())
                 .appendQueryParameter("trackingId", story.getTrackingId())
                 .build();
+    }
+
+    private PendingIntent getMarkAsReadIntent(StoryInfo story) {
+        Intent intent = new Intent(context, MainReceiver.class);
+        intent.setAction(Actions.ACTION_MARK_AS_READ);
+        intent.putExtra(Actions.EXTRA_STORY_ID, story.getId());
+        return PendingIntent.getBroadcast(context, 0, intent, 0);
     }
 
     private NotificationManagerCompat getNotificationManager() {
