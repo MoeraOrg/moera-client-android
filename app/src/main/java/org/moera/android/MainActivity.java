@@ -3,12 +3,15 @@ package org.moera.android;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import org.moera.android.push.PushEventHandler;
@@ -44,6 +47,21 @@ public class MainActivity extends AppCompatActivity {
                 swipeRefreshLayout.setRefreshing(false);
             }
 
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && request.isRedirect()) {
+                    return false;
+                }
+                String clientHost = Uri.parse(getString(R.string.web_client_url)).getHost();
+                if (request.getUrl().getHost().equalsIgnoreCase(clientHost)) {
+                    return false;
+                }
+
+                CustomTabsIntent customTabsIntent = new CustomTabsIntent.Builder().build();
+                customTabsIntent.launchUrl(MainActivity.this, request.getUrl());
+
+                return true;
+            }
         });
 
         webView.loadUrl(getWebViewUrl());
