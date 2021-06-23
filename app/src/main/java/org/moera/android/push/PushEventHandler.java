@@ -1,5 +1,6 @@
 package org.moera.android.push;
 
+import android.app.ActivityManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -90,6 +91,10 @@ public class PushEventHandler implements EventHandler {
     }
 
     private void addStory(StoryInfo story) {
+        if (isAppInForeground()) {
+            return;
+        }
+
         String summary = htmlToPlainText(story.getSummary());
 
         NotificationCompat.BigTextStyle bigTextStyle = new NotificationCompat.BigTextStyle();
@@ -104,6 +109,7 @@ public class PushEventHandler implements EventHandler {
                 .setCategory(CATEGORY_SOCIAL)
                 .setStyle(bigTextStyle)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setWhen(story.getMoment() / 1000)
                 .setAutoCancel(true);
         NotificationManagerCompat notificationManager = getNotificationManager();
         notificationManager.notify(story.getId(), 0, builder.build());
@@ -152,6 +158,22 @@ public class PushEventHandler implements EventHandler {
                 context.getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE).edit();
         prefs.putString(Preferences.LAST_SEEN_MOMENT, moment);
         prefs.apply();
+    }
+
+    private boolean isAppInForeground() {
+        ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        List<ActivityManager.RunningAppProcessInfo> runningProcesses = am.getRunningAppProcesses();
+        for (ActivityManager.RunningAppProcessInfo processInfo : runningProcesses) {
+            if (processInfo.importance ==
+                    ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND) {
+                for (String activeProcess : processInfo.pkgList) {
+                    if (activeProcess.equals(context.getPackageName())) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     @Override
