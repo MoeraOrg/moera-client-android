@@ -1,4 +1,4 @@
-package org.moera.android.model;
+package org.moera.android.api.model;
 
 import java.util.ArrayList;
 import java.util.List;

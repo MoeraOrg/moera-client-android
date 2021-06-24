@@ -1,4 +1,4 @@
-package org.moera.android.model;
+package org.moera.android.api.model;
 
 public class PostingSubscriptionsInfo {
 

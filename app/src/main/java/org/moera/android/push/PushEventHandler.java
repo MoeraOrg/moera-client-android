@@ -24,9 +24,9 @@ import org.moera.android.MainActivity;
 import org.moera.android.MainReceiver;
 import org.moera.android.Preferences;
 import org.moera.android.R;
-import org.moera.android.model.PushContent;
-import org.moera.android.model.StoryInfo;
-import org.moera.android.model.StoryType;
+import org.moera.android.api.model.PushContent;
+import org.moera.android.api.model.StoryInfo;
+import org.moera.android.api.model.StoryType;
 import org.moera.android.util.NodeLocation;
 
 import java.util.ArrayList;
@@ -114,7 +114,6 @@ public class PushEventHandler implements EventHandler {
                 .setCategory(CATEGORY_SOCIAL)
                 .setStyle(bigTextStyle)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setWhen(story.getMoment() / 1000)
                 .setAutoCancel(true);
         NotificationManagerCompat notificationManager = getNotificationManager();
         notificationManager.notify(story.getId(), 0, builder.build());
@@ -159,7 +158,8 @@ public class PushEventHandler implements EventHandler {
         Intent intent = new Intent(context, MainReceiver.class);
         intent.setAction(Actions.ACTION_MARK_AS_READ);
         intent.putExtra(Actions.EXTRA_STORY_ID, story.getId());
-        return PendingIntent.getBroadcast(context, 0, intent, 0);
+        return PendingIntent.getBroadcast(context, 0, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     private NotificationManagerCompat getNotificationManager() {
