@@ -1,19 +1,26 @@
 package org.moera.android;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import org.apache.commons.lang3.StringUtils;
 import org.moera.android.push.PushEventHandler;
 import org.moera.android.push.PushWorker;
 
@@ -21,13 +28,35 @@ import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static class FileChooserCallback implements ActivityResultCallback<Uri> {
+
+        private ValueCallback<Uri[]> callback;
+
+        public void setCallback(ValueCallback<Uri[]> callback) {
+            this.callback = callback;
+        }
+
+        @Override
+        public void onActivityResult(Uri uri) {
+            callback.onReceiveValue(new Uri[]{uri});
+        }
+
+    }
+
     private static final String TAG = MainActivity.class.getSimpleName();
 
+    private ActivityResultLauncher<String> getContent;
+    private final FileChooserCallback fileChooserCallback = new FileChooserCallback();
+
+    @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         PushEventHandler.createNotificationChannel(this);
+        getContent = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                fileChooserCallback);
 
         setContentView(R.layout.activity_main);
 
@@ -62,6 +91,24 @@ public class MainActivity extends AppCompatActivity {
 
                 return true;
             }
+        });
+        webView.setWebChromeClient(new WebChromeClient() {
+
+            @Override
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback,
+                                             FileChooserParams fileChooserParams) {
+                String[] acceptTypes = fileChooserParams.getAcceptTypes();
+                String acceptType = acceptTypes != null && acceptTypes.length > 0
+                        ? acceptTypes[0] : null;
+                if (StringUtils.isEmpty(acceptType)) {
+                    acceptType = "*/*";
+                }
+                fileChooserCallback.setCallback(filePathCallback);
+                getContent.launch(acceptType);
+
+                return true;
+            }
+
         });
 
         webView.loadUrl(getWebViewUrl());
