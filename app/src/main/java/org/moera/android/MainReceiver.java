@@ -5,6 +5,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
+import androidx.core.app.NotificationManagerCompat;
+
 import org.moera.android.api.NodeApi;
 import org.moera.android.api.NodeApiException;
 
@@ -17,9 +19,9 @@ public class MainReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         if (Objects.equals(intent.getAction(), Actions.ACTION_MARK_AS_READ)) {
+            String storyId = intent.getStringExtra(Actions.EXTRA_STORY_ID);
+            NotificationManagerCompat.from(context).cancel(storyId, 0);
             new Thread(() -> {
-                String storyId = intent.getStringExtra(Actions.EXTRA_STORY_ID);
-
                 NodeApi nodeApi = new NodeApi(context);
                 try {
                     nodeApi.putStory(storyId, true, true);

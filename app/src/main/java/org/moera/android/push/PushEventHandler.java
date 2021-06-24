@@ -41,10 +41,12 @@ public class PushEventHandler implements EventHandler {
 
     private static final String CHANNEL_ID = "org.moera.NotificationsChannel";
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private final Context context;
     private long openedAt;
 
     public PushEventHandler(Context context) {
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         this.context = context;
     }
 
@@ -73,8 +75,6 @@ public class PushEventHandler implements EventHandler {
 
     @Override
     public void onMessage(String event, MessageEvent messageEvent) {
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         try {
             PushContent pushContent = objectMapper.readValue(messageEvent.getData(),
                     PushContent.class);
