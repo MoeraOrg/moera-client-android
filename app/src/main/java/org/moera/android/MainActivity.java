@@ -66,7 +66,16 @@ public class MainActivity extends AppCompatActivity {
         swipeRefreshLayout.setOnRefreshListener(webView::reload);
 
         webView.getSettings().setJavaScriptEnabled(true);
-        webView.addJavascriptInterface(new JsInterface(this), "Android");
+        webView.addJavascriptInterface(new JsInterface(this, new JsInterfaceCallback() {
+
+            @Override
+            public void onLocationChanged(String location) {
+                runOnUiThread(
+                        () -> swipeRefreshLayout.setEnabled(swipeRefreshEnabled(location))
+                );
+            }
+
+        }), "Android");
         webView.getSettings().setDomStorageEnabled(true);
         webView.getSettings().setAllowFileAccess(true);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
@@ -92,6 +101,7 @@ public class MainActivity extends AppCompatActivity {
 
                 return true;
             }
+
         });
         webView.setWebChromeClient(new WebChromeClient() {
 
@@ -149,6 +159,10 @@ public class MainActivity extends AppCompatActivity {
 
     private WebView getWebView() {
         return findViewById(R.id.webView);
+    }
+
+    private boolean swipeRefreshEnabled(String location) {
+        return !location.startsWith("/profile");
     }
 
 }

@@ -13,17 +13,23 @@ import static android.content.Context.MODE_PRIVATE;
 public class JsInterface {
 
     private final Context context;
+    private final JsInterfaceCallback callback;
 
-    public JsInterface(Context context) {
+    public JsInterface(Context context, JsInterfaceCallback callback) {
         this.context = context;
+        this.callback = callback;
     }
 
     @JavascriptInterface
-    public void locationChanged(String url) {
+    public void locationChanged(String url, String location) {
         SharedPreferences.Editor prefs =
                 context.getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE).edit();
         prefs.putString(Preferences.CURRENT_URL, url);
         prefs.apply();
+
+        if (callback != null) {
+            callback.onLocationChanged(location);
+        }
     }
 
     @JavascriptInterface
