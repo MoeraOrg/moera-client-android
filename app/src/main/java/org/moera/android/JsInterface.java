@@ -1,9 +1,11 @@
 package org.moera.android;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.webkit.JavascriptInterface;
 
+import org.apache.commons.lang3.StringUtils;
 import org.moera.android.push.PushWorker;
 
 import java.util.Objects;
@@ -53,6 +55,18 @@ public class JsInterface {
         editor.apply();
 
         PushWorker.schedule(context, url, token, true);
+    }
+
+    @JavascriptInterface
+    public void share(String url, String title) {
+        String text = StringUtils.isEmpty(title) ? url : title + " " + url;
+
+        Intent sendIntent = new Intent();
+        sendIntent.setAction(Intent.ACTION_SEND);
+        sendIntent.putExtra(Intent.EXTRA_TEXT, text);
+        sendIntent.setType("text/plain");
+
+        context.startActivity(Intent.createChooser(sendIntent, "Share to..."));
     }
 
 }
