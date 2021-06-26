@@ -6,9 +6,11 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebMessage;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -21,6 +23,8 @@ import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import org.apache.commons.lang3.StringUtils;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.moera.android.push.PushEventHandler;
 import org.moera.android.push.PushWorker;
 
@@ -75,6 +79,13 @@ public class MainActivity extends AppCompatActivity {
                 );
             }
 
+            @Override
+            public void onBack() {
+                runOnUiThread(
+                        () -> pressBack()
+                );
+            }
+
         }), "Android");
         webView.getSettings().setDomStorageEnabled(true);
         webView.getSettings().setAllowFileAccess(true);
@@ -91,7 +102,7 @@ public class MainActivity extends AppCompatActivity {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && request.isRedirect()) {
                     return false;
                 }
-                String clientHost = Uri.parse(getString(R.string.web_client_url)).getHost();
+                String clientHost = getWebClientUri().getHost();
                 if (request.getUrl().getHost().equalsIgnoreCase(clientHost)) {
                     return false;
                 }
@@ -133,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
     private String getWebViewUrl() {
         if (Objects.equals(getIntent().getAction(), Intent.ACTION_VIEW)
                 && getIntent().getData() != null) {
-            Uri.Builder builder = Uri.parse(getString(R.string.web_client_url)).buildUpon();
+            Uri.Builder builder = getWebClientUri().buildUpon();
             Uri intentUri = getIntent().getData();
             return builder.encodedPath(intentUri.getEncodedPath())
                     .encodedQuery(intentUri.getEncodedQuery())
@@ -149,6 +160,22 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
+        WebView webView = getWebView();
+        try {
+            JSONObject message = new JSONObject();
+            message.put("source", "moera-android");
+            message.put("action", "back");
+            webView.postWebMessage(new WebMessage(message.toString()), getWebClientUri());
+        } catch (JSONException e) {
+            Log.e(TAG, "Error building JSON", e);
+        }
+    }
+
+    private Uri getWebClientUri() {
+        return Uri.parse(getString(R.string.web_client_url));
+    }
+
+    public void pressBack() {
         WebView webView = getWebView();
         if (webView.canGoBack()) {
             webView.goBack();

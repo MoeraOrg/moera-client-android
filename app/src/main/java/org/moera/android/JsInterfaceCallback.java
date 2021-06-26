@@ -4,4 +4,6 @@ public interface JsInterfaceCallback {
 
     void onLocationChanged(String location);
 
+    void onBack();
+
 }

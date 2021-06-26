@@ -3,6 +3,7 @@ package org.moera.android;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.util.Log;
 import android.webkit.JavascriptInterface;
 
 import org.apache.commons.lang3.StringUtils;
@@ -13,6 +14,8 @@ import java.util.Objects;
 import static android.content.Context.MODE_PRIVATE;
 
 public class JsInterface {
+
+    private static final String TAG = JsInterface.class.getSimpleName();
 
     private final Context context;
     private final JsInterfaceCallback callback;
@@ -67,6 +70,18 @@ public class JsInterface {
         sendIntent.setType("text/plain");
 
         context.startActivity(Intent.createChooser(sendIntent, "Share to..."));
+    }
+
+    @JavascriptInterface
+    public void back() {
+        if (callback != null) {
+            callback.onBack();
+        }
+    }
+
+    @JavascriptInterface
+    public void log(String text) {
+        Log.i(TAG, text);
     }
 
 }
