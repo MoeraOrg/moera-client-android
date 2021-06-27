@@ -12,17 +12,25 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.NotificationChannelCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.res.ResourcesCompat;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
+import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.request.target.CustomTarget;
+import com.bumptech.glide.request.transition.Transition;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.launchdarkly.eventsource.EventHandler;
 import com.launchdarkly.eventsource.MessageEvent;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.moera.android.Actions;
 import org.moera.android.MainActivity;
@@ -36,6 +44,7 @@ import org.moera.android.util.NodeLocation;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static android.content.Context.MODE_PRIVATE;
 import static androidx.core.app.NotificationCompat.CATEGORY_SOCIAL;
@@ -103,6 +112,42 @@ public class PushEventHandler implements EventHandler {
             return;
         }
 
+        Bitmap defaultAvatar = getAvatar();
+        if (story.getSummaryAvatar() == null
+                || StringUtils.isEmpty(story.getSummaryAvatar().getPath())) {
+            addStory(story, defaultAvatar);
+        }
+
+        SharedPreferences prefs = context.getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
+        String homeRootPage = prefs.getString(Preferences.HOME_LOCATION, "");
+        Uri avatarUri = Uri.parse(homeRootPage).buildUpon()
+                .appendPath("media")
+                .appendEncodedPath(story.getSummaryAvatar().getPath())
+                .build();
+        RequestOptions options;
+        if (Objects.equals(story.getSummaryAvatar().getShape(), "circle")) {
+            options = RequestOptions.centerCropTransform();
+        } else {
+            options = RequestOptions.bitmapTransform(new RoundedCorners(10));
+        }
+        Glide.with(context)
+                .load(avatarUri)
+                .apply(options)
+                .into(new CustomTarget<Drawable>() {
+                    @Override
+                    public void onResourceReady(@NonNull Drawable resource,
+                                                @Nullable Transition<? super Drawable> transition) {
+                        addStory(story, drawableToBitmap(resource, defaultAvatar));
+                    }
+
+                    @Override
+                    public void onLoadCleared(@Nullable Drawable placeholder) {
+                        addStory(story, defaultAvatar);
+                    }
+                });
+    }
+
+    private void addStory(StoryInfo story, Bitmap avatar) {
         String summary = htmlToPlainText(story.getSummary());
 
         NotificationCompat.BigTextStyle bigTextStyle = new NotificationCompat.BigTextStyle();
@@ -113,7 +158,7 @@ public class PushEventHandler implements EventHandler {
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(story.getStoryType().getTitle())
                 .setContentText(summary)
-                .setLargeIcon(getAvatar())
+                .setLargeIcon(avatar)
                 .setContentIntent(getTapIntent(story))
                 .addAction(0, context.getString(R.string.mark_as_read),
                         getMarkAsReadIntent(story))
@@ -128,7 +173,12 @@ public class PushEventHandler implements EventHandler {
     private Bitmap getAvatar() {
         Resources res = context.getResources();
         Drawable drawable = ResourcesCompat.getDrawable(res, R.drawable.avatar, null);
-        return drawable != null ? ((BitmapDrawable) drawable).getBitmap() : null;
+        return drawableToBitmap(drawable, null);
+    }
+
+    private Bitmap drawableToBitmap(Drawable drawable, Bitmap defaultBitmap) {
+        return drawable instanceof BitmapDrawable
+                ? ((BitmapDrawable) drawable).getBitmap() : defaultBitmap;
     }
 
     private void deleteStory(String id) {
