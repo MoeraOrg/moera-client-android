@@ -5,12 +5,17 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.util.Log;
 
 import androidx.core.app.NotificationChannelCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.res.ResourcesCompat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -108,6 +113,7 @@ public class PushEventHandler implements EventHandler {
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(story.getStoryType().getTitle())
                 .setContentText(summary)
+                .setLargeIcon(getAvatar())
                 .setContentIntent(getTapIntent(story))
                 .addAction(0, context.getString(R.string.mark_as_read),
                         getMarkAsReadIntent(story))
@@ -117,6 +123,12 @@ public class PushEventHandler implements EventHandler {
                 .setAutoCancel(true);
         NotificationManagerCompat notificationManager = getNotificationManager();
         notificationManager.notify(story.getId(), 0, builder.build());
+    }
+
+    private Bitmap getAvatar() {
+        Resources res = context.getResources();
+        Drawable drawable = ResourcesCompat.getDrawable(res, R.drawable.avatar, null);
+        return drawable != null ? ((BitmapDrawable) drawable).getBitmap() : null;
     }
 
     private void deleteStory(String id) {
