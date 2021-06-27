@@ -73,6 +73,16 @@ public class JsInterface {
     }
 
     @JavascriptInterface
+    public String getSharedText() {
+        return callback != null ? callback.getSharedText() : null;
+    }
+
+    @JavascriptInterface
+    public String getSharedTextType() {
+        return callback != null ? callback.getSharedTextType() : null;
+    }
+
+    @JavascriptInterface
     public void back() {
         if (callback != null) {
             callback.onBack();

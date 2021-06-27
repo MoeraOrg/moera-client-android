@@ -37,6 +37,14 @@
                 <data android:host="web.moera.org" android:scheme="http" />
                 <data android:host="web.moera.org" android:scheme="https" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/plain" />
+                <data android:mimeType="text/html" />
+            </intent-filter>
         </activity>
     </application>
 

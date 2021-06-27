@@ -86,6 +86,22 @@ public class MainActivity extends AppCompatActivity {
                 );
             }
 
+            @Override
+            public String getSharedText() {
+                if (!Objects.equals(getIntent().getAction(), Intent.ACTION_SEND)) {
+                    return null;
+                }
+                return getIntent().getStringExtra(Intent.EXTRA_TEXT);
+            }
+
+            @Override
+            public String getSharedTextType() {
+                if (!Objects.equals(getIntent().getAction(), Intent.ACTION_SEND)) {
+                    return null;
+                }
+                return getIntent().getType().equals("text/html") ? "html" : "text";
+            }
+
         }), "Android");
         webView.getSettings().setDomStorageEnabled(true);
         webView.getSettings().setAllowFileAccess(true);
@@ -148,6 +164,18 @@ public class MainActivity extends AppCompatActivity {
             Uri intentUri = getIntent().getData();
             return builder.encodedPath(intentUri.getEncodedPath())
                     .encodedQuery(intentUri.getEncodedQuery())
+                    .build()
+                    .toString();
+        }
+        if (Objects.equals(getIntent().getAction(), Intent.ACTION_SEND)) {
+            SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
+            Uri homeUri = Uri.parse(prefs.getString(Preferences.HOME_LOCATION, null));
+            String composeUri = homeUri.buildUpon()
+                    .appendPath("compose")
+                    .build()
+                    .toString();
+            return getWebClientUri().buildUpon()
+                    .appendQueryParameter("href", composeUri)
                     .build()
                     .toString();
         }
