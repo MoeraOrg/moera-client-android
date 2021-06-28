@@ -10,6 +10,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.moera.android.BuildConfig;
 import org.moera.android.Preferences;
 import org.moera.android.settings.exception.DeserializeSettingValueException;
 import org.moera.android.settings.type.SettingTypeBase;
@@ -78,12 +79,16 @@ public class Settings {
         try {
             SettingDescriptor desc = settingsMetadata.getDescriptor(name);
             if (desc == null) {
-                Log.w(TAG, "No metadata for option " + name);
+                if (BuildConfig.DEBUG) {
+                    Log.w(TAG, "No metadata for setting " + name);
+                }
                 return;
             }
             values.put(name, deserializeValue(desc.getType(), value));
         } catch (DeserializeSettingValueException e) {
-            Log.e(TAG, e.getMessage() + ": " + name);
+            if (BuildConfig.DEBUG) {
+                Log.e(TAG, e.getMessage() + ": " + name);
+            }
         }
     }
 
@@ -130,7 +135,9 @@ public class Settings {
         for (String name : values.keySet()) {
             SettingDescriptor desc = settingsMetadata.getDescriptor(name);
             if (desc == null) {
-                Log.w(TAG, "No metadata for option " + name);
+                if (BuildConfig.DEBUG) {
+                    Log.w(TAG, "No metadata for setting " + name);
+                }
                 continue;
             }
             settings.add(new Setting(name, serializeValue(desc.getType(), values.get(name))));

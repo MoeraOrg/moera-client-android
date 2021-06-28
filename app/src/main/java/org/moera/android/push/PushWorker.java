@@ -19,6 +19,7 @@ import androidx.work.WorkerParameters;
 import com.launchdarkly.eventsource.ConnectionErrorHandler;
 import com.launchdarkly.eventsource.EventSource;
 
+import org.moera.android.BuildConfig;
 import org.moera.android.Preferences;
 import org.moera.android.settings.Settings;
 
@@ -86,10 +87,14 @@ public class PushWorker extends Worker {
 
         HttpUrl pushUrl = getPushUrl(homePage);
         if (pushUrl == null) {
-            Log.i(TAG, "Unknown or malformed URL: " + homePage);
+            if (BuildConfig.DEBUG) {
+                Log.i(TAG, "Unknown or malformed URL: " + homePage);
+            }
             return Result.failure();
         }
-        Log.i(TAG, "Getting notifications from " + pushUrl);
+        if (BuildConfig.DEBUG) {
+            Log.i(TAG, "Getting notifications from " + pushUrl);
+        }
 
         thread = Thread.currentThread();
         try {
@@ -106,7 +111,9 @@ public class PushWorker extends Worker {
                     .headers(headers)
                     .lastEventId(getLastSeenMoment())
                     .connectionErrorHandler(t -> {
-                        Log.e(TAG, "Connection error: " + t.getClass().getCanonicalName());
+                        if (BuildConfig.DEBUG) {
+                            Log.e(TAG, "Connection error: " + t.getClass().getCanonicalName());
+                        }
                         return ConnectionErrorHandler.Action.PROCEED;
                     })
                     .build();

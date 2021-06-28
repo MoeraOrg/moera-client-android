@@ -121,7 +121,9 @@ public class JsInterface {
 
     @JavascriptInterface
     public void log(String text) {
-        Log.i(TAG, text);
+        if (BuildConfig.DEBUG) {
+            Log.i(TAG, text);
+        }
     }
 
 }

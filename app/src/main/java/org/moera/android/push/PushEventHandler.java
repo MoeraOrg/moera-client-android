@@ -33,6 +33,7 @@ import com.launchdarkly.eventsource.MessageEvent;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.moera.android.Actions;
+import org.moera.android.BuildConfig;
 import org.moera.android.MainActivity;
 import org.moera.android.MainReceiver;
 import org.moera.android.Preferences;
@@ -83,14 +84,18 @@ public class PushEventHandler implements EventHandler {
 
     @Override
     public void onOpen() {
-        Log.i(TAG, "Opened channel");
+        if (BuildConfig.DEBUG) {
+            Log.i(TAG, "Opened push channel");
+        }
         openedAt = System.currentTimeMillis();
     }
 
     @Override
     public void onClosed() {
-        long time = (System.currentTimeMillis() - openedAt) / 1000;
-        Log.i(TAG, "Closed channel after " + time + "s");
+        if (BuildConfig.DEBUG) {
+            long time = (System.currentTimeMillis() - openedAt) / 1000;
+            Log.i(TAG, "Closed push channel after " + time + "s");
+        }
     }
 
     @Override
@@ -110,8 +115,9 @@ public class PushEventHandler implements EventHandler {
                     break;
             }
         } catch (JsonProcessingException e) {
-            Log.e(TAG, "Error parsing push message: " + messageEvent.getData());
-            Log.e(TAG, "Exception:", e);
+            if (BuildConfig.DEBUG) {
+                Log.e(TAG, "Error parsing push message: " + messageEvent.getData(), e);
+            }
         }
         storeLastSeenMoment(messageEvent.getLastEventId());
     }
@@ -321,7 +327,9 @@ public class PushEventHandler implements EventHandler {
 
     @Override
     public void onError(Throwable t) {
-        Log.i(TAG, "Error: " + t.getMessage());
+        if (BuildConfig.DEBUG) {
+            Log.i(TAG, "Push event handler error: " + t.getMessage());
+        }
     }
 
 }

@@ -6,6 +6,7 @@ import android.util.Log;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.moera.android.BuildConfig;
 import org.moera.android.R;
 import org.moera.android.settings.exception.UnknownSettingTypeException;
 import org.moera.android.settings.type.BoolSettingType;
@@ -66,7 +67,9 @@ public class SettingsMetadata {
     public SettingDescriptor getDescriptor(String name) {
         SettingDescriptor desc = descriptors.get(name);
         if (desc == null) {
-            Log.w(TAG, "Unknown setting: " + name);
+            if (BuildConfig.DEBUG) {
+                Log.w(TAG, "Unknown setting: " + name);
+            }
             return null;
         }
         return desc;

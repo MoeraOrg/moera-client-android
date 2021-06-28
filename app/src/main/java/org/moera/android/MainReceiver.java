@@ -26,7 +26,9 @@ public class MainReceiver extends BroadcastReceiver {
                 try {
                     nodeApi.putStory(storyId, true, true);
                 } catch (NodeApiException e) {
-                    Log.e(TAG, "Node API exception", e);
+                    if (BuildConfig.DEBUG) {
+                        Log.e(TAG, "Node API exception", e);
+                    }
                 }
             }).start();
         }

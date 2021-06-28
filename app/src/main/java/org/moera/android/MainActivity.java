@@ -87,7 +87,9 @@ public class MainActivity extends AppCompatActivity {
         try {
             settings = new Settings(this);
         } catch (IOException e) {
-            Log.e(TAG, "Cannot load settings", e);
+            if (BuildConfig.DEBUG) {
+                Log.e(TAG, "Cannot load settings", e);
+            }
             finish();
             return;
         }
@@ -248,7 +250,9 @@ public class MainActivity extends AppCompatActivity {
             message.put("action", "back");
             webView.postWebMessage(new WebMessage(message.toString()), getWebClientUri());
         } catch (JSONException e) {
-            Log.e(TAG, "Error building JSON", e);
+            if (BuildConfig.DEBUG) {
+                Log.e(TAG, "Error building JSON", e);
+            }
         }
     }
 
