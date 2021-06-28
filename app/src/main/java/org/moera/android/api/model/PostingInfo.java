@@ -351,7 +351,12 @@ public class PostingInfo {
         if (getFeedReferences() == null) {
             return null;
         }
-        return getFeedReferences().stream().filter(fr -> fr.getFeedName().equals(feedName)).findFirst().orElse(null);
+        for (FeedReference fr : getFeedReferences()) {
+            if (fr.getFeedName().equals(feedName)) {
+                return fr;
+            }
+        }
+        return null;
     }
 
     public Map<String, String[]> getOperations() {

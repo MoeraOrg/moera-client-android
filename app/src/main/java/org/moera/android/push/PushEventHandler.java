@@ -243,7 +243,7 @@ public class PushEventHandler implements EventHandler {
         if (isAppInForeground() || !enabled || !newsEnabled) {
             return;
         }
-        if (!feedStatus.getFeedName().equalsIgnoreCase("news")) {
+        if (!feedStatus.getFeedName().equals("news")) {
             return;
         }
 
