@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="compose"
+        android:enabled="true"
+        android:icon="@mipmap/ic_compose"
+        android:shortcutShortLabel="@string/compose_shortcut_short_label"
+        android:shortcutLongLabel="@string/compose_shortcut_long_label">
+        <intent
+            android:action="android.intent.action.SEND"
+            android:targetPackage="org.moera.web.twa"
+            android:targetClass="org.moera.android.MainActivity" />
+        <capability-binding android:key="actions.intent.CREATE_MESSAGE" />
+    </shortcut>
+</shortcuts>

@@ -3,4 +3,6 @@
     <string name="channel_name">Moera Notifications</string>
     <string name="mark_as_read">Mark as read</string>
     <string name="web_client_url">https://web.moera.org</string>
+    <string name="compose_shortcut_short_label">New post</string>
+    <string name="compose_shortcut_long_label">Create a new post</string>
 </resources>
