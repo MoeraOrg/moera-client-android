@@ -223,6 +223,11 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            pressBack();
+            return;
+        }
+
         WebView webView = getWebView();
         try {
             JSONObject message = new JSONObject();
