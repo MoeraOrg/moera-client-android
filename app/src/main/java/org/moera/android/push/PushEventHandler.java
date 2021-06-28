@@ -37,6 +37,7 @@ import org.moera.android.MainActivity;
 import org.moera.android.MainReceiver;
 import org.moera.android.Preferences;
 import org.moera.android.R;
+import org.moera.android.api.model.FeedWithStatus;
 import org.moera.android.api.model.PushContent;
 import org.moera.android.api.model.StoryInfo;
 import org.moera.android.api.model.StoryType;
@@ -44,6 +45,7 @@ import org.moera.android.util.NodeLocation;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 import static android.content.Context.MODE_PRIVATE;
@@ -58,12 +60,14 @@ public class PushEventHandler implements EventHandler {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Context context;
     private final boolean enabled;
+    private final boolean newsEnabled;
     private long openedAt;
 
-    public PushEventHandler(Context context, boolean enabled) {
+    public PushEventHandler(Context context, boolean enabled, boolean newsEnabled) {
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         this.context = context;
         this.enabled = enabled;
+        this.newsEnabled = newsEnabled;
     }
 
     public static void createNotificationChannel(Context context) {
@@ -100,6 +104,9 @@ public class PushEventHandler implements EventHandler {
                     break;
                 case STORY_DELETED:
                     deleteStory(pushContent.getId());
+                    break;
+                case FEED_UPDATED:
+                    displayFeedStatus(pushContent.getFeedStatus());
                     break;
             }
         } catch (JsonProcessingException e) {
@@ -161,7 +168,7 @@ public class PushEventHandler implements EventHandler {
                 .setContentTitle(story.getStoryType().getTitle())
                 .setContentText(summary)
                 .setLargeIcon(avatar)
-                .setContentIntent(getTapIntent(story))
+                .setContentIntent(getStoryTapIntent(story))
                 .addAction(0, context.getString(R.string.mark_as_read),
                         getMarkAsReadIntent(story))
                 .setCategory(CATEGORY_SOCIAL)
@@ -183,17 +190,12 @@ public class PushEventHandler implements EventHandler {
                 ? ((BitmapDrawable) drawable).getBitmap() : defaultBitmap;
     }
 
-    private void deleteStory(String id) {
-        NotificationManagerCompat notificationManager = getNotificationManager();
-        notificationManager.cancel(id, 0);
-    }
-
     private String htmlToPlainText(String html) {
         String text = html.replaceAll("<[^>]+>", "");
         return StringEscapeUtils.unescapeHtml4(text);
     }
 
-    private PendingIntent getTapIntent(StoryInfo story) {
+    private PendingIntent getStoryTapIntent(StoryInfo story) {
         Intent intent = new Intent(context, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         intent.setData(getTarget(story));
@@ -224,6 +226,66 @@ public class PushEventHandler implements EventHandler {
         intent.putExtra(Actions.EXTRA_STORY_ID, story.getId());
         return PendingIntent.getBroadcast(context, 0, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+
+    private void deleteStory(String id) {
+        NotificationManagerCompat notificationManager = getNotificationManager();
+        notificationManager.cancel(id, 0);
+    }
+
+    private void displayFeedStatus(FeedWithStatus feedStatus) {
+        if (isAppInForeground() || !enabled || !newsEnabled) {
+            return;
+        }
+        if (!feedStatus.getFeedName().equalsIgnoreCase("news")) {
+            return;
+        }
+
+        NotificationManagerCompat notificationManager = getNotificationManager();
+
+        if (feedStatus.getNotViewed() <= 0) {
+            notificationManager.cancel(null, 1);
+            return;
+        }
+
+        String summary;
+        if (feedStatus.getNotViewed() == 1) {
+            summary = "You have a new post in your News feed";
+        } else {
+            summary = String.format(Locale.ENGLISH,
+                    "You have %d new posts in your News feed", feedStatus.getNotViewed());
+        }
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentText(summary)
+                .setContentIntent(getFeedTapIntent())
+                .setCategory(CATEGORY_SOCIAL)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true);
+        notificationManager.notify(null, 1, builder.build());
+    }
+
+    private PendingIntent getFeedTapIntent() {
+        Intent intent = new Intent(context, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        intent.setData(getNewsFeed());
+        return PendingIntent.getActivity(context, 0, intent, 0);
+    }
+
+    private Uri getNewsFeed() {
+        SharedPreferences prefs = context.getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
+        Uri homeUri = Uri.parse(prefs.getString(Preferences.HOME_LOCATION, null));
+        String composeUri = homeUri.buildUpon()
+                .appendPath("news")
+                .build()
+                .toString();
+        return getWebClientUri().buildUpon()
+                .appendQueryParameter("href", composeUri)
+                .build();
+    }
+
+    private Uri getWebClientUri() {
+        return Uri.parse(context.getString(R.string.web_client_url));
     }
 
     private NotificationManagerCompat getNotificationManager() {

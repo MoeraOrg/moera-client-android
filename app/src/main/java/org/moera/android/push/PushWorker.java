@@ -36,6 +36,7 @@ public class PushWorker extends Worker {
     public static final String HOME_PAGE = "homePage";
     public static final String HOME_TOKEN = "homeToken";
     public static final String ENABLED = "enabled";
+    public static final String NEWS_ENABLED = "newsEnabled";
 
     private static final String TAG = PushWorker.class.getSimpleName();
 
@@ -81,6 +82,7 @@ public class PushWorker extends Worker {
         String homePage = getInputData().getString(HOME_PAGE);
         String token = getInputData().getString(HOME_TOKEN);
         boolean enabled = getInputData().getBoolean(ENABLED, true);
+        boolean newsEnabled = getInputData().getBoolean(NEWS_ENABLED, true);
 
         HttpUrl pushUrl = getPushUrl(homePage);
         if (pushUrl == null) {
@@ -95,7 +97,8 @@ public class PushWorker extends Worker {
                     .add("Authorization", "Bearer " + token)
                     .build();
             EventSource.Builder eventSourceBuilder =
-                    new EventSource.Builder(new PushEventHandler(getApplicationContext(), enabled), pushUrl);
+                    new EventSource.Builder(new PushEventHandler(getApplicationContext(), enabled, newsEnabled),
+                            pushUrl);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 eventSourceBuilder = setEventSourceTimeouts(eventSourceBuilder);
             }
@@ -156,6 +159,7 @@ public class PushWorker extends Worker {
                 .putString(HOME_PAGE, homePage)
                 .putString(HOME_TOKEN, homeToken)
                 .putBoolean(ENABLED, settings.getBool("mobile.notifications.enabled"))
+                .putBoolean(NEWS_ENABLED, settings.getBool("mobile.notifications.news.enabled"))
                 .build();
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)

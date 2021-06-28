@@ -8,6 +8,7 @@ public class PushContent {
     private PushContentType type;
     private String id;
     private StoryInfo story;
+    private FeedWithStatus feedStatus;
 
     public PushContent() {
     }
@@ -38,6 +39,14 @@ public class PushContent {
 
     public void setStory(StoryInfo story) {
         this.story = story;
+    }
+
+    public FeedWithStatus getFeedStatus() {
+        return feedStatus;
+    }
+
+    public void setFeedStatus(FeedWithStatus feedStatus) {
+        this.feedStatus = feedStatus;
     }
 
 }

@@ -5,5 +5,12 @@
     "defaultValue": "true",
     "title": "Display notifications on mobile",
     "modifiers": {}
+  },
+  {
+    "name": "mobile.notifications.news.enabled",
+    "type": "bool",
+    "defaultValue": "true",
+    "title": "Notify about new News feed posts on mobile",
+    "modifiers": {}
   }
 ]
