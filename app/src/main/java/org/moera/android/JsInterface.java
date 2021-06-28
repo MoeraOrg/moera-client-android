@@ -6,9 +6,13 @@ import android.content.SharedPreferences;
 import android.util.Log;
 import android.webkit.JavascriptInterface;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.moera.android.push.PushWorker;
+import org.moera.android.settings.Settings;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 import static android.content.Context.MODE_PRIVATE;
@@ -18,10 +22,12 @@ public class JsInterface {
     private static final String TAG = JsInterface.class.getSimpleName();
 
     private final Context context;
+    private final Settings settings;
     private final JsInterfaceCallback callback;
 
-    public JsInterface(Context context, JsInterfaceCallback callback) {
+    public JsInterface(Context context, Settings settings, JsInterfaceCallback callback) {
         this.context = context;
+        this.settings = settings;
         this.callback = callback;
     }
 
@@ -57,7 +63,31 @@ public class JsInterface {
         editor.putString(Preferences.HOME_OWNER_NAME, ownerName);
         editor.apply();
 
-        PushWorker.schedule(context, url, token, true);
+        PushWorker.schedule(context, url, token, settings, true);
+    }
+
+    @JavascriptInterface
+    public String loadSettingsMeta() {
+        try {
+            return IOUtils.toString(context.getResources().openRawResource(R.raw.settings), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            return "[]";
+        }
+    }
+
+    @JavascriptInterface
+    public String loadSettings() {
+        return settings.toString();
+    }
+
+    @JavascriptInterface
+    public void storeSettings(String data) {
+        settings.update(data);
+
+        SharedPreferences prefs = context.getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
+        String url = prefs.getString(Preferences.HOME_LOCATION, null);
+        String token = prefs.getString(Preferences.HOME_TOKEN, null);
+        PushWorker.schedule(context, url, token, settings, true);
     }
 
     @JavascriptInterface

@@ -1,0 +1,9 @@
+[
+  {
+    "name": "mobile.notifications.enabled",
+    "type": "bool",
+    "defaultValue": "true",
+    "title": "Display notifications on mobile",
+    "modifiers": {}
+  }
+]

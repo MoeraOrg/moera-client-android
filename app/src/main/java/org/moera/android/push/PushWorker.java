@@ -20,6 +20,7 @@ import com.launchdarkly.eventsource.ConnectionErrorHandler;
 import com.launchdarkly.eventsource.EventSource;
 
 import org.moera.android.Preferences;
+import org.moera.android.settings.Settings;
 
 import java.time.Duration;
 import java.util.UUID;
@@ -34,6 +35,7 @@ public class PushWorker extends Worker {
 
     public static final String HOME_PAGE = "homePage";
     public static final String HOME_TOKEN = "homeToken";
+    public static final String ENABLED = "enabled";
 
     private static final String TAG = PushWorker.class.getSimpleName();
 
@@ -78,6 +80,7 @@ public class PushWorker extends Worker {
     public Result doWork() {
         String homePage = getInputData().getString(HOME_PAGE);
         String token = getInputData().getString(HOME_TOKEN);
+        boolean enabled = getInputData().getBoolean(ENABLED, true);
 
         HttpUrl pushUrl = getPushUrl(homePage);
         if (pushUrl == null) {
@@ -92,7 +95,7 @@ public class PushWorker extends Worker {
                     .add("Authorization", "Bearer " + token)
                     .build();
             EventSource.Builder eventSourceBuilder =
-                    new EventSource.Builder(new PushEventHandler(getApplicationContext()), pushUrl);
+                    new EventSource.Builder(new PushEventHandler(getApplicationContext(), enabled), pushUrl);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 eventSourceBuilder = setEventSourceTimeouts(eventSourceBuilder);
             }
@@ -140,7 +143,7 @@ public class PushWorker extends Worker {
         }
     }
 
-    public static void schedule(Context context, String homePage, String homeToken,
+    public static void schedule(Context context, String homePage, String homeToken, Settings settings,
                                 boolean replace) {
         if (homePage == null || homeToken == null) {
             if (replace) {
@@ -152,6 +155,7 @@ public class PushWorker extends Worker {
         Data data = new Data.Builder()
                 .putString(HOME_PAGE, homePage)
                 .putString(HOME_TOKEN, homeToken)
+                .putBoolean(ENABLED, settings.getBool("mobile.notifications.enabled"))
                 .build();
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)

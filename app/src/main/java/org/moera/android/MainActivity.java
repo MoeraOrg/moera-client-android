@@ -30,7 +30,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.moera.android.push.PushEventHandler;
 import org.moera.android.push.PushWorker;
+import org.moera.android.settings.Settings;
 
+import java.io.IOException;
 import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
@@ -81,6 +83,15 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        Settings settings;
+        try {
+            settings = new Settings(this);
+        } catch (IOException e) {
+            Log.e(TAG, "Cannot load settings", e);
+            finish();
+            return;
+        }
+
         PushEventHandler.createNotificationChannel(this);
         requestPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestPermission(),
@@ -97,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
         swipeRefreshLayout.setOnRefreshListener(webView::reload);
 
         webView.getSettings().setJavaScriptEnabled(true);
-        webView.addJavascriptInterface(new JsInterface(this, new JsInterfaceCallback() {
+        JsInterfaceCallback jsCallback = new JsInterfaceCallback() {
 
             @Override
             public void onLocationChanged(String location) {
@@ -129,7 +140,9 @@ public class MainActivity extends AppCompatActivity {
                 return getIntent().getType().equals("text/html") ? "html" : "text";
             }
 
-        }), "Android");
+        };
+        webView.addJavascriptInterface(new JsInterface(this, settings, jsCallback),
+                "Android");
         webView.getSettings().setDomStorageEnabled(true);
         webView.getSettings().setAllowFileAccess(true);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
@@ -189,7 +202,7 @@ public class MainActivity extends AppCompatActivity {
         SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
         String homePage = prefs.getString(Preferences.HOME_LOCATION, null);
         String homeToken = prefs.getString(Preferences.HOME_TOKEN, null);
-        PushWorker.schedule(this, homePage, homeToken, true);
+        PushWorker.schedule(this, homePage, homeToken, settings, true);
     }
 
     private String getWebViewUrl() {
@@ -257,7 +270,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean swipeRefreshEnabled(String location) {
-        return !location.startsWith("/profile");
+        return !location.startsWith("/profile") && !location.startsWith("/settings");
     }
 
 }

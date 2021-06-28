@@ -57,11 +57,13 @@ public class PushEventHandler implements EventHandler {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Context context;
+    private final boolean enabled;
     private long openedAt;
 
-    public PushEventHandler(Context context) {
+    public PushEventHandler(Context context, boolean enabled) {
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         this.context = context;
+        this.enabled = enabled;
     }
 
     public static void createNotificationChannel(Context context) {
@@ -108,7 +110,7 @@ public class PushEventHandler implements EventHandler {
     }
 
     private void addStory(StoryInfo story) {
-        if (isAppInForeground()) {
+        if (isAppInForeground() || !enabled) {
             return;
         }
 
