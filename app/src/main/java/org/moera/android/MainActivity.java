@@ -1,8 +1,10 @@
 package org.moera.android;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -20,6 +22,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.browser.customtabs.CustomTabsIntent;
+import androidx.core.content.ContextCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import org.apache.commons.lang3.StringUtils;
@@ -32,6 +35,23 @@ import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
 
+    private class PermissionCallback implements ActivityResultCallback<Boolean> {
+
+        private String acceptType;
+
+        public void setAcceptType(String acceptType) {
+            this.acceptType = acceptType;
+        }
+
+        @Override
+        public void onActivityResult(Boolean isGranted) {
+            if (isGranted) {
+                getContentLauncher.launch(acceptType);
+            }
+        }
+
+    }
+
     private static class FileChooserCallback implements ActivityResultCallback<Uri> {
 
         private ValueCallback<Uri[]> callback;
@@ -42,14 +62,18 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onActivityResult(Uri uri) {
-            callback.onReceiveValue(new Uri[]{uri});
+            if (uri != null) {
+                callback.onReceiveValue(new Uri[]{uri});
+            }
         }
 
     }
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
-    private ActivityResultLauncher<String> getContent;
+    private ActivityResultLauncher<String> requestPermissionLauncher;
+    private ActivityResultLauncher<String> getContentLauncher;
+    private final PermissionCallback permissionCallback = new PermissionCallback();
     private final FileChooserCallback fileChooserCallback = new FileChooserCallback();
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -58,7 +82,10 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         PushEventHandler.createNotificationChannel(this);
-        getContent = registerForActivityResult(
+        requestPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                permissionCallback);
+        getContentLauncher = registerForActivityResult(
                 new ActivityResultContracts.GetContent(),
                 fileChooserCallback);
 
@@ -142,8 +169,16 @@ public class MainActivity extends AppCompatActivity {
                     acceptType = "*/*";
                 }
                 fileChooserCallback.setCallback(filePathCallback);
-                getContent.launch(acceptType);
 
+                if (ContextCompat.checkSelfPermission(
+                        MainActivity.this,
+                        Manifest.permission.READ_EXTERNAL_STORAGE)
+                        == PackageManager.PERMISSION_GRANTED) {
+                    getContentLauncher.launch(acceptType);
+                } else {
+                    permissionCallback.setAcceptType(acceptType);
+                    requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE);
+                }
                 return true;
             }
 
