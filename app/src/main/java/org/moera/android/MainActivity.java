@@ -178,8 +178,7 @@ public class MainActivity extends AppCompatActivity {
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback,
                                              FileChooserParams fileChooserParams) {
                 String[] acceptTypes = fileChooserParams.getAcceptTypes();
-                String acceptType = acceptTypes != null && acceptTypes.length > 0
-                        ? acceptTypes[0] : null;
+                String acceptType = acceptTypes != null && acceptTypes.length > 0 ? acceptTypes[0] : null;
                 if (StringUtils.isEmpty(acceptType)) {
                     acceptType = "*/*";
                 }
@@ -187,8 +186,7 @@ public class MainActivity extends AppCompatActivity {
 
                 if (ContextCompat.checkSelfPermission(
                         MainActivity.this,
-                        Manifest.permission.READ_EXTERNAL_STORAGE)
-                        == PackageManager.PERMISSION_GRANTED) {
+                        Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
                     getContentLauncher.launch(acceptType);
                 } else {
                     permissionCallback.setAcceptType(acceptType);
