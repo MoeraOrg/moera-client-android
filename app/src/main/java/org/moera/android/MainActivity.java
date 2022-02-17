@@ -25,9 +25,9 @@ import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.core.content.ContextCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
-import org.apache.commons.lang3.StringUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.moera.android.activitycontract.PickImage;
 import org.moera.android.push.PushEventHandler;
 import org.moera.android.push.PushWorker;
 import org.moera.android.settings.Settings;
@@ -39,16 +39,10 @@ public class MainActivity extends AppCompatActivity {
 
     private class PermissionCallback implements ActivityResultCallback<Boolean> {
 
-        private String acceptType;
-
-        public void setAcceptType(String acceptType) {
-            this.acceptType = acceptType;
-        }
-
         @Override
         public void onActivityResult(Boolean isGranted) {
             if (isGranted) {
-                getContentLauncher.launch(acceptType);
+                pickImageLauncher.launch(null);
             }
         }
 
@@ -74,7 +68,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
 
     private ActivityResultLauncher<String> requestPermissionLauncher;
-    private ActivityResultLauncher<String> getContentLauncher;
+    private ActivityResultLauncher<Void> pickImageLauncher;
     private final PermissionCallback permissionCallback = new PermissionCallback();
     private final FileChooserCallback fileChooserCallback = new FileChooserCallback();
 
@@ -98,8 +92,8 @@ public class MainActivity extends AppCompatActivity {
         requestPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestPermission(),
                 permissionCallback);
-        getContentLauncher = registerForActivityResult(
-                new ActivityResultContracts.GetContent(),
+        pickImageLauncher = registerForActivityResult(
+                new PickImage(),
                 fileChooserCallback);
 
         setContentView(R.layout.activity_main);
@@ -177,19 +171,13 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback,
                                              FileChooserParams fileChooserParams) {
-                String[] acceptTypes = fileChooserParams.getAcceptTypes();
-                String acceptType = acceptTypes != null && acceptTypes.length > 0 ? acceptTypes[0] : null;
-                if (StringUtils.isEmpty(acceptType)) {
-                    acceptType = "*/*";
-                }
                 fileChooserCallback.setCallback(filePathCallback);
 
                 if (ContextCompat.checkSelfPermission(
                         MainActivity.this,
                         Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-                    getContentLauncher.launch(acceptType);
+                    pickImageLauncher.launch(null);
                 } else {
-                    permissionCallback.setAcceptType(acceptType);
                     requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE);
                 }
                 return true;
