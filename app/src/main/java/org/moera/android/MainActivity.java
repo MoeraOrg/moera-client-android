@@ -39,16 +39,22 @@ public class MainActivity extends AppCompatActivity {
 
     private class PermissionCallback implements ActivityResultCallback<Boolean> {
 
+        boolean multi;
+
+        public void setMulti(boolean multi) {
+            this.multi = multi;
+        }
+
         @Override
         public void onActivityResult(Boolean isGranted) {
             if (isGranted) {
-                pickImageLauncher.launch(null);
+                pickImagesLauncher.launch(multi);
             }
         }
 
     }
 
-    private static class FileChooserCallback implements ActivityResultCallback<Uri> {
+    private static class FileChooserCallback implements ActivityResultCallback<Uri[]> {
 
         private ValueCallback<Uri[]> callback;
 
@@ -57,10 +63,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public void onActivityResult(Uri uri) {
-            if (uri != null) {
-                callback.onReceiveValue(new Uri[]{uri});
-            }
+        public void onActivityResult(Uri[] uris) {
+            callback.onReceiveValue(uris);
         }
 
     }
@@ -68,7 +72,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
 
     private ActivityResultLauncher<String> requestPermissionLauncher;
-    private ActivityResultLauncher<Void> pickImageLauncher;
+    private ActivityResultLauncher<Boolean> pickImagesLauncher;
     private final PermissionCallback permissionCallback = new PermissionCallback();
     private final FileChooserCallback fileChooserCallback = new FileChooserCallback();
 
@@ -92,7 +96,7 @@ public class MainActivity extends AppCompatActivity {
         requestPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestPermission(),
                 permissionCallback);
-        pickImageLauncher = registerForActivityResult(
+        pickImagesLauncher = registerForActivityResult(
                 new PickImage(),
                 fileChooserCallback);
 
@@ -172,12 +176,14 @@ public class MainActivity extends AppCompatActivity {
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback,
                                              FileChooserParams fileChooserParams) {
                 fileChooserCallback.setCallback(filePathCallback);
+                boolean multi = fileChooserParams.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE;
 
                 if (ContextCompat.checkSelfPermission(
                         MainActivity.this,
                         Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-                    pickImageLauncher.launch(null);
+                    pickImagesLauncher.launch(multi);
                 } else {
+                    permissionCallback.setMulti(multi);
                     requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE);
                 }
                 return true;
