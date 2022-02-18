@@ -1,21 +1,34 @@
 package org.moera.android;
 
+import static android.content.Context.MODE_PRIVATE;
+
+import android.Manifest;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.webkit.JavascriptInterface;
+
+import androidx.core.content.ContextCompat;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.moera.android.push.PushWorker;
 import org.moera.android.settings.Settings;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
-
-import static android.content.Context.MODE_PRIVATE;
+import java.util.UUID;
 
 public class JsInterface {
 
@@ -99,7 +112,59 @@ public class JsInterface {
         sendIntent.putExtra(Intent.EXTRA_TEXT, text);
         sendIntent.setType("text/plain");
 
-        context.startActivity(Intent.createChooser(sendIntent, "Share to..."));
+        context.startActivity(Intent.createChooser(sendIntent, context.getString(R.string.share_to)));
+    }
+
+    @JavascriptInterface
+    public void saveImage(String url, String mimeType) {
+        if (ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+            permittedSaveImage(url, mimeType);
+        } else {
+            callback.withWritePermission(() -> permittedSaveImage(url, mimeType));
+        }
+    }
+
+    private void permittedSaveImage(String url, String mimeType) {
+        new Thread(() -> {
+            try {
+                URL urlU = new URL(url);
+                String fileName = UUID.randomUUID().toString() + "." + getImageExtension(url);
+                File file = new File(
+                        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), fileName);
+                IOUtils.copy(urlU, file);
+
+                ContentResolver resolver = context.getContentResolver();
+
+                ContentValues details = new ContentValues();
+                details.put(MediaStore.Images.Media.DISPLAY_NAME, fileName);
+                details.put(MediaStore.Images.Media.MIME_TYPE, mimeType);
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                    details.put(MediaStore.Images.Media.DATA, file.getPath());
+                }
+
+                Uri imagesCollection = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                        ? MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+                        : MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+                resolver.insert(imagesCollection, details);
+
+                callback.onImageSaved();
+            } catch (IOException e) {
+                callback.onImageSavingFailed();
+            }
+        }).start();
+    }
+
+    private String getImageExtension(String url) {
+        String path = Uri.parse(url).getPath();
+        if (path != null) {
+            int pos = path.lastIndexOf(".");
+            if (pos >= 0 && pos < path.length() - 1) {
+                return path.substring(pos + 1);
+            }
+        }
+        return "jpg";
     }
 
     @JavascriptInterface

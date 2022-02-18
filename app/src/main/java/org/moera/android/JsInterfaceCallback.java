@@ -10,4 +10,10 @@ public interface JsInterfaceCallback {
 
     String getSharedTextType();
 
+    void withWritePermission(Runnable runnable);
+
+    void onImageSaved();
+
+    void onImageSavingFailed();
+
 }

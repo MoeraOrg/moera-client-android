@@ -38,7 +38,7 @@ import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
 
-    private class PermissionCallback implements ActivityResultCallback<Boolean> {
+    private class ReadPermissionCallback implements ActivityResultCallback<Boolean> {
 
         boolean multi;
 
@@ -50,6 +50,23 @@ public class MainActivity extends AppCompatActivity {
         public void onActivityResult(Boolean isGranted) {
             if (isGranted) {
                 pickImagesLauncher.launch(multi);
+            }
+        }
+
+    }
+
+    private static class WritePermissionCallback implements ActivityResultCallback<Boolean> {
+
+        Runnable runnable;
+
+        public void setRunnable(Runnable runnable) {
+            this.runnable = runnable;
+        }
+
+        @Override
+        public void onActivityResult(Boolean isGranted) {
+            if (isGranted) {
+                runnable.run();
             }
         }
 
@@ -72,9 +89,11 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
-    private ActivityResultLauncher<String> requestPermissionLauncher;
+    private ActivityResultLauncher<String> readPermissionLauncher;
+    private ActivityResultLauncher<String> writePermissionLauncher;
     private ActivityResultLauncher<Boolean> pickImagesLauncher;
-    private final PermissionCallback permissionCallback = new PermissionCallback();
+    private final ReadPermissionCallback readPermissionCallback = new ReadPermissionCallback();
+    private final WritePermissionCallback writePermissionCallback = new WritePermissionCallback();
     private final FileChooserCallback fileChooserCallback = new FileChooserCallback();
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -94,9 +113,12 @@ public class MainActivity extends AppCompatActivity {
         }
 
         PushEventHandler.createNotificationChannel(this);
-        requestPermissionLauncher = registerForActivityResult(
+        readPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestPermission(),
-                permissionCallback);
+                readPermissionCallback);
+        writePermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                writePermissionCallback);
         pickImagesLauncher = registerForActivityResult(
                 new PickImage(),
                 fileChooserCallback);
@@ -139,6 +161,30 @@ public class MainActivity extends AppCompatActivity {
                     return null;
                 }
                 return getIntent().getType().equals("text/html") ? "html" : "text";
+            }
+
+            @Override
+            public void withWritePermission(Runnable runnable) {
+                writePermissionCallback.setRunnable(runnable);
+                writePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+            }
+
+            @Override
+            public void onImageSaved() {
+                runOnUiThread(
+                        () -> Toast.makeText(
+                                MainActivity.this, getString(R.string.save_image_success), Toast.LENGTH_SHORT)
+                                .show()
+                );
+            }
+
+            @Override
+            public void onImageSavingFailed() {
+                runOnUiThread(
+                        () -> Toast.makeText(
+                                MainActivity.this, getString(R.string.save_image_failure), Toast.LENGTH_SHORT)
+                                .show()
+                );
             }
 
         };
@@ -190,8 +236,8 @@ public class MainActivity extends AppCompatActivity {
                         Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
                     pickImagesLauncher.launch(multi);
                 } else {
-                    permissionCallback.setMulti(multi);
-                    requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE);
+                    readPermissionCallback.setMulti(multi);
+                    readPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE);
                 }
                 return true;
             }
