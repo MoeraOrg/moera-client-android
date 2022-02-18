@@ -16,6 +16,7 @@ import android.webkit.WebMessage;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
@@ -159,12 +160,18 @@ public class MainActivity extends AppCompatActivity {
                     return false;
                 }
                 String clientHost = getWebClientUri().getHost();
-                if (request.getUrl().getHost().equalsIgnoreCase(clientHost)) {
+                String requestHost = request.getUrl().getHost();
+                if (requestHost != null && requestHost.equalsIgnoreCase(clientHost)) {
                     return false;
                 }
 
-                CustomTabsIntent customTabsIntent = new CustomTabsIntent.Builder().build();
-                customTabsIntent.launchUrl(MainActivity.this, request.getUrl());
+                try {
+                    CustomTabsIntent customTabsIntent = new CustomTabsIntent.Builder().build();
+                    customTabsIntent.launchUrl(MainActivity.this, request.getUrl());
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, getString(R.string.url_no_handler), Toast.LENGTH_SHORT)
+                            .show();
+                }
 
                 return true;
             }
