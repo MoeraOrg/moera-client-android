@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
+import android.provider.MediaStore;
 
 import androidx.activity.result.contract.ActivityResultContract;
 import androidx.annotation.CallSuper;
@@ -16,7 +18,10 @@ public class PickImage extends ActivityResultContract<Boolean, Uri[]> {
     @NonNull
     @Override
     public Intent createIntent(@NonNull Context context, @NonNull Boolean input) {
-        return new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+        Uri imagesCollection = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                ? MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+                : MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+        return new Intent(Intent.ACTION_PICK, imagesCollection)
                 .setType("image/*")
                 .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, input);
     }
