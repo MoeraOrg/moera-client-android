@@ -134,13 +134,6 @@ public class MainActivity extends AppCompatActivity {
         JsInterfaceCallback jsCallback = new JsInterfaceCallback() {
 
             @Override
-            public void onLocationChanged(String location) {
-                runOnUiThread(
-                        () -> swipeRefreshLayout.setEnabled(swipeRefreshEnabled(location))
-                );
-            }
-
-            @Override
             public void onBack() {
                 runOnUiThread(
                         () -> pressBack()
@@ -173,6 +166,13 @@ public class MainActivity extends AppCompatActivity {
             public void toast(String text) {
                 runOnUiThread(
                         () -> Toast.makeText(MainActivity.this, text, Toast.LENGTH_SHORT).show()
+                );
+            }
+
+            @Override
+            public void setSwipeRefreshEnabled(boolean enabled) {
+                runOnUiThread(
+                        () -> swipeRefreshLayout.setEnabled(enabled)
                 );
             }
 
@@ -305,10 +305,6 @@ public class MainActivity extends AppCompatActivity {
 
     private WebView getWebView() {
         return findViewById(R.id.webView);
-    }
-
-    private boolean swipeRefreshEnabled(String location) {
-        return !location.startsWith("/profile") && !location.startsWith("/settings");
     }
 
 }

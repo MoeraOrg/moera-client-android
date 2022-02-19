@@ -46,14 +46,9 @@ public class JsInterface {
 
     @JavascriptInterface
     public void locationChanged(String url, String location) {
-        SharedPreferences.Editor prefs =
-                context.getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE).edit();
+        SharedPreferences.Editor prefs = context.getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE).edit();
         prefs.putString(Preferences.CURRENT_URL, url);
         prefs.apply();
-
-        if (callback != null) {
-            callback.onLocationChanged(location);
-        }
     }
 
     @JavascriptInterface
@@ -194,6 +189,13 @@ public class JsInterface {
     public void toast(String text) {
         if (callback != null) {
             callback.toast(text);
+        }
+    }
+
+    @JavascriptInterface
+    public void setSwipeRefreshEnabled(boolean enabled) {
+        if (callback != null) {
+            callback.setSwipeRefreshEnabled(enabled);
         }
     }
 

@@ -2,8 +2,6 @@ package org.moera.android;
 
 public interface JsInterfaceCallback {
 
-    void onLocationChanged(String location);
-
     void onBack();
 
     String getSharedText();
@@ -13,5 +11,7 @@ public interface JsInterfaceCallback {
     void withWritePermission(Runnable runnable);
 
     void toast(String text);
+
+    void setSwipeRefreshEnabled(boolean enabled);
 
 }
