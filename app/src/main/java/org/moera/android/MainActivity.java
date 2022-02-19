@@ -170,20 +170,9 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onImageSaved() {
+            public void toast(String text) {
                 runOnUiThread(
-                        () -> Toast.makeText(
-                                MainActivity.this, getString(R.string.save_image_success), Toast.LENGTH_SHORT)
-                                .show()
-                );
-            }
-
-            @Override
-            public void onImageSavingFailed() {
-                runOnUiThread(
-                        () -> Toast.makeText(
-                                MainActivity.this, getString(R.string.save_image_failure), Toast.LENGTH_SHORT)
-                                .show()
+                        () -> Toast.makeText(MainActivity.this, text, Toast.LENGTH_SHORT).show()
                 );
             }
 

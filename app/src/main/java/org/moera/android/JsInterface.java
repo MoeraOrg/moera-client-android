@@ -122,7 +122,9 @@ public class JsInterface {
                 Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
             permittedSaveImage(url, mimeType);
         } else {
-            callback.withWritePermission(() -> permittedSaveImage(url, mimeType));
+            if (callback != null) {
+                callback.withWritePermission(() -> permittedSaveImage(url, mimeType));
+            }
         }
     }
 
@@ -149,9 +151,13 @@ public class JsInterface {
                         : MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
                 resolver.insert(imagesCollection, details);
 
-                callback.onImageSaved();
+                if (callback != null) {
+                    callback.toast(context.getString(R.string.save_image_success));
+                }
             } catch (IOException e) {
-                callback.onImageSavingFailed();
+                if (callback != null) {
+                    callback.toast(context.getString(R.string.save_image_failure));
+                }
             }
         }).start();
     }
@@ -181,6 +187,13 @@ public class JsInterface {
     public void back() {
         if (callback != null) {
             callback.onBack();
+        }
+    }
+
+    @JavascriptInterface
+    public void toast(String text) {
+        if (callback != null) {
+            callback.toast(text);
         }
     }
 

@@ -12,8 +12,6 @@ public interface JsInterfaceCallback {
 
     void withWritePermission(Runnable runnable);
 
-    void onImageSaved();
-
-    void onImageSavingFailed();
+    void toast(String text);
 
 }
