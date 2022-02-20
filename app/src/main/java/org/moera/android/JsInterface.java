@@ -128,8 +128,11 @@ public class JsInterface {
             try {
                 URL urlU = new URL(url);
                 String fileName = UUID.randomUUID().toString() + "." + getImageExtension(url);
-                File file = new File(
-                        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), fileName);
+                File directory = getImageDirectory();
+                if (!directory.exists()) {
+                    directory.mkdir();
+                }
+                File file = new File(directory, fileName);
                 IOUtils.copy(urlU, file);
 
                 ContentResolver resolver = context.getContentResolver();
@@ -150,11 +153,17 @@ public class JsInterface {
                     callback.toast(context.getString(R.string.save_image_success));
                 }
             } catch (IOException e) {
+                Log.e(TAG, "Image saving failed", e);
                 if (callback != null) {
                     callback.toast(context.getString(R.string.save_image_failure));
                 }
             }
         }).start();
+    }
+
+    private static File getImageDirectory() {
+        return Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES + File.separator
+                + "Moera");
     }
 
     private String getImageExtension(String url) {
