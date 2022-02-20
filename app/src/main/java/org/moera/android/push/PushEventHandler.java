@@ -141,7 +141,7 @@ public class PushEventHandler implements EventHandler {
                 .build();
         RequestOptions options;
         if (Objects.equals(story.getSummaryAvatar().getShape(), "circle")) {
-            options = RequestOptions.centerCropTransform();
+            options = RequestOptions.circleCropTransform();
         } else {
             options = RequestOptions.bitmapTransform(new RoundedCorners(10));
         }
