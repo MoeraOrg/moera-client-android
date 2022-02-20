@@ -16,6 +16,8 @@ public class StoryInfo {
     private Long moment;
     private Boolean viewed;
     private Boolean read;
+    private String summaryNodeName;
+    private String summaryFullName;
     private AvatarImage summaryAvatar;
     private String summary;
     private String trackingId;
@@ -25,6 +27,7 @@ public class StoryInfo {
     private String remoteFullName;
     private String remotePostingId;
     private String remoteCommentId;
+    private String remoteMediaId;
     private Map<String, String[]> operations;
 
     public StoryInfo() {
@@ -102,6 +105,22 @@ public class StoryInfo {
         this.read = read;
     }
 
+    public String getSummaryNodeName() {
+        return summaryNodeName;
+    }
+
+    public void setSummaryNodeName(String summaryNodeName) {
+        this.summaryNodeName = summaryNodeName;
+    }
+
+    public String getSummaryFullName() {
+        return summaryFullName;
+    }
+
+    public void setSummaryFullName(String summaryFullName) {
+        this.summaryFullName = summaryFullName;
+    }
+
     public AvatarImage getSummaryAvatar() {
         return summaryAvatar;
     }
@@ -172,6 +191,14 @@ public class StoryInfo {
 
     public void setRemoteCommentId(String remoteCommentId) {
         this.remoteCommentId = remoteCommentId;
+    }
+
+    public String getRemoteMediaId() {
+        return remoteMediaId;
+    }
+
+    public void setRemoteMediaId(String remoteMediaId) {
+        this.remoteMediaId = remoteMediaId;
     }
 
     public Map<String, String[]> getOperations() {
