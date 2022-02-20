@@ -16,6 +16,7 @@ import android.provider.MediaStore;
 import android.util.Log;
 import android.webkit.JavascriptInterface;
 
+import androidx.annotation.RequiresApi;
 import androidx.core.content.ContextCompat;
 
 import org.apache.commons.io.IOUtils;
@@ -25,6 +26,7 @@ import org.moera.android.settings.Settings;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
@@ -33,6 +35,8 @@ import java.util.UUID;
 public class JsInterface {
 
     private static final String TAG = JsInterface.class.getSimpleName();
+
+    private static final String IMAGE_DIRECTORY = Environment.DIRECTORY_PICTURES + File.separator + "Moera";
 
     private final Context context;
     private final Settings settings;
@@ -112,7 +116,9 @@ public class JsInterface {
 
     @JavascriptInterface
     public void saveImage(String url, String mimeType) {
-        if (ContextCompat.checkSelfPermission(
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            permittedSaveImageQ(url, mimeType);
+        } else if (ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
             permittedSaveImage(url, mimeType);
@@ -126,28 +132,23 @@ public class JsInterface {
     private void permittedSaveImage(String url, String mimeType) {
         new Thread(() -> {
             try {
-                URL urlU = new URL(url);
+                URL in = new URL(url);
                 String fileName = UUID.randomUUID().toString() + "." + getImageExtension(url);
-                File directory = getImageDirectory();
+                File directory = Environment.getExternalStoragePublicDirectory(IMAGE_DIRECTORY);
                 if (!directory.exists()) {
                     directory.mkdir();
                 }
                 File file = new File(directory, fileName);
-                IOUtils.copy(urlU, file);
+                IOUtils.copy(in, file);
 
                 ContentResolver resolver = context.getContentResolver();
 
                 ContentValues details = new ContentValues();
                 details.put(MediaStore.Images.Media.DISPLAY_NAME, fileName);
                 details.put(MediaStore.Images.Media.MIME_TYPE, mimeType);
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                    details.put(MediaStore.Images.Media.DATA, file.getPath());
-                }
+                details.put(MediaStore.Images.Media.DATA, file.getPath());
 
-                Uri imagesCollection = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
-                        ? MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
-                        : MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
-                resolver.insert(imagesCollection, details);
+                resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, details);
 
                 if (callback != null) {
                     callback.toast(context.getString(R.string.save_image_success));
@@ -161,9 +162,41 @@ public class JsInterface {
         }).start();
     }
 
-    private static File getImageDirectory() {
-        return Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES + File.separator
-                + "Moera");
+    @RequiresApi(api = Build.VERSION_CODES.Q)
+    private void permittedSaveImageQ(String url, String mimeType) {
+        new Thread(() -> {
+            try {
+                String fileName = UUID.randomUUID().toString() + "." + getImageExtension(url);
+
+                ContentResolver resolver = context.getContentResolver();
+
+                ContentValues details = new ContentValues();
+                details.put(MediaStore.Images.Media.DISPLAY_NAME, fileName);
+                details.put(MediaStore.Images.Media.MIME_TYPE, mimeType);
+                details.put(MediaStore.Images.Media.RELATIVE_PATH, IMAGE_DIRECTORY);
+                details.put(MediaStore.Images.Media.IS_PENDING, 1);
+
+                Uri imagesCollection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL);
+                Uri media = resolver.insert(imagesCollection, details);
+
+                URL in = new URL(url);
+                OutputStream out = resolver.openOutputStream(media);
+                IOUtils.copy(in, out);
+
+                details.clear();
+                details.put(MediaStore.Images.Media.IS_PENDING, 0);
+                resolver.update(media, details, null, null);
+
+                if (callback != null) {
+                    callback.toast(context.getString(R.string.save_image_success));
+                }
+            } catch (IOException e) {
+                Log.e(TAG, "Image saving failed", e);
+                if (callback != null) {
+                    callback.toast(context.getString(R.string.save_image_failure));
+                }
+            }
+        }).start();
     }
 
     private String getImageExtension(String url) {
