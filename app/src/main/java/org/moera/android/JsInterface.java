@@ -154,7 +154,9 @@ public class JsInterface {
                     callback.toast(context.getString(R.string.save_image_success));
                 }
             } catch (IOException e) {
-                Log.e(TAG, "Image saving failed", e);
+                if (BuildConfig.DEBUG) {
+                    Log.e(TAG, "Image saving failed", e);
+                }
                 if (callback != null) {
                     callback.toast(context.getString(R.string.save_image_failure));
                 }
@@ -191,7 +193,9 @@ public class JsInterface {
                     callback.toast(context.getString(R.string.save_image_success));
                 }
             } catch (IOException e) {
-                Log.e(TAG, "Image saving failed", e);
+                if (BuildConfig.DEBUG) {
+                    Log.e(TAG, "Image saving failed", e);
+                }
                 if (callback != null) {
                     callback.toast(context.getString(R.string.save_image_failure));
                 }
