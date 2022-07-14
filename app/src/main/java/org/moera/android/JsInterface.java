@@ -246,6 +246,11 @@ public class JsInterface {
     }
 
     @JavascriptInterface
+    public boolean isDonationsEnabled() {
+        return false;
+    }
+
+    @JavascriptInterface
     public void log(String text) {
         if (BuildConfig.DEBUG) {
             Log.i(TAG, text);
