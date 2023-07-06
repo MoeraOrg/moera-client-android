@@ -37,6 +37,9 @@ public class JsInterface {
     private static final String TAG = JsInterface.class.getSimpleName();
 
     private static final String IMAGE_DIRECTORY = Environment.DIRECTORY_PICTURES + File.separator + "Moera";
+    private static final String APP_FLAVOR_GOOGLE_PLAY = "google-play";
+    private static final String APP_FLAVOR_APK = "apk";
+    private static final int API_VERSION = 1;
 
     private final Context context;
     private final Settings settings;
@@ -246,8 +249,13 @@ public class JsInterface {
     }
 
     @JavascriptInterface
-    public boolean isDonationsEnabled() {
-        return false;
+    public String getFlavor() {
+        return APP_FLAVOR_GOOGLE_PLAY;
+    }
+
+    @JavascriptInterface
+    public int getApiVersion() {
+        return API_VERSION;
     }
 
     @JavascriptInterface
