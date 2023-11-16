@@ -10,8 +10,8 @@ android {
         applicationId "org.moera.web.twa"
         minSdkVersion 21
         targetSdkVersion 31
-        versionCode 6
-        versionName "0.14.0"
+        versionCode 7
+        versionName "0.15.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
