@@ -12,6 +12,7 @@ import org.moera.android.api.model.StoryAttributes;
 import org.moera.android.api.model.StoryInfo;
 
 import java.io.IOException;
+import java.util.Objects;
 
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
@@ -36,7 +37,7 @@ public class NodeApi {
     private HttpUrl.Builder getHomeLocation() {
         SharedPreferences prefs = context.getSharedPreferences(Preferences.GLOBAL,
                 Context.MODE_PRIVATE);
-        return HttpUrl.parse(prefs.getString(Preferences.HOME_LOCATION, ""))
+        return Objects.requireNonNull(HttpUrl.parse(prefs.getString(Preferences.HOME_LOCATION, "")))
                 .newBuilder()
                 .addPathSegment("api");
     }

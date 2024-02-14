@@ -34,6 +34,14 @@ import java.util.UUID;
 
 public class JsInterface {
 
+    private static class MediaStorageException extends Exception {
+
+        public MediaStorageException(String message) {
+            super(message);
+        }
+
+    }
+
     private static final String TAG = JsInterface.class.getSimpleName();
 
     private static final String IMAGE_DIRECTORY = Environment.DIRECTORY_PICTURES + File.separator + "Moera";
@@ -185,7 +193,13 @@ public class JsInterface {
                 Uri media = resolver.insert(imagesCollection, details);
 
                 URL in = new URL(url);
+                if (media == null) {
+                    throw new MediaStorageException("resolver.insert() returned null");
+                }
                 OutputStream out = resolver.openOutputStream(media);
+                if (out == null) {
+                    throw new MediaStorageException("Cannot open output stream");
+                }
                 IOUtils.copy(in, out);
 
                 details.clear();
@@ -195,7 +209,7 @@ public class JsInterface {
                 if (callback != null) {
                     callback.toast(context.getString(R.string.save_image_success));
                 }
-            } catch (IOException e) {
+            } catch (IOException | MediaStorageException e) {
                 if (BuildConfig.DEBUG) {
                     Log.e(TAG, "Image saving failed", e);
                 }
