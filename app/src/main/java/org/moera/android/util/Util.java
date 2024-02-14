@@ -1,5 +1,7 @@
 package org.moera.android.util;
 
+import android.os.Build;
+
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -24,11 +26,15 @@ public class Util {
             return null;
         }
 
-        try {
-            return URLEncoder.encode(s.toString(), StandardCharsets.UTF_8.toString());
-        } catch (UnsupportedEncodingException e) {
-            // practically impossible
-            return null;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return URLEncoder.encode(s.toString(), StandardCharsets.UTF_8);
+        } else {
+            try {
+                return URLEncoder.encode(s.toString(), StandardCharsets.UTF_8.toString());
+            } catch (UnsupportedEncodingException e) {
+                // practically impossible
+                return null;
+            }
         }
     }
 

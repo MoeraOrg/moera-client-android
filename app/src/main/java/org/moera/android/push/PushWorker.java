@@ -117,13 +117,11 @@ public class PushWorker extends Worker {
                         return ConnectionErrorHandler.Action.PROCEED;
                     })
                     .build();
-            eventSource.start();
-            try {
+            try (eventSource) {
+                eventSource.start();
                 Thread.sleep(15 * 60 * 1000);
             } catch (InterruptedException e) {
                 // just exit
-            } finally {
-                eventSource.close();
             }
         } finally {
             thread = null;

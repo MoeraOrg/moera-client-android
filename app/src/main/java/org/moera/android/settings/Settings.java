@@ -51,7 +51,7 @@ public class Settings {
             ObjectMapper mapper = new ObjectMapper();
             List<Setting> settings = mapper.readValue(
                     data,
-                    new TypeReference<List<Setting>>() {
+                    new TypeReference<>() {
                     });
             for (Setting setting : settings) {
                 putValue(setting.getName(), setting.getValue());

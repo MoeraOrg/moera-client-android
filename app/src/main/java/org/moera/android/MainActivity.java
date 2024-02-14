@@ -153,7 +153,7 @@ public class MainActivity extends AppCompatActivity {
                 if (!Objects.equals(getIntent().getAction(), Intent.ACTION_SEND)) {
                     return null;
                 }
-                return getIntent().getType().equals("text/html") ? "html" : "text";
+                return Objects.equals(getIntent().getType(), "text/html") ? "html" : "text";
             }
 
             @Override

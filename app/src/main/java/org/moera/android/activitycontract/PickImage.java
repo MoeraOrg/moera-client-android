@@ -21,8 +21,8 @@ public class PickImage extends ActivityResultContract<Boolean, Uri[]> {
         Uri imagesCollection = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
                 ? MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
                 : MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
-        return new Intent(Intent.ACTION_PICK, imagesCollection)
-                .setType("image/*")
+        return new Intent(Intent.ACTION_PICK)
+                .setDataAndType(imagesCollection, "image/*")
                 .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, input);
     }
 
