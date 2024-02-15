@@ -17,7 +17,7 @@ import android.util.Log;
 import android.webkit.JavascriptInterface;
 
 import androidx.annotation.RequiresApi;
-import androidx.core.content.ContextCompat;
+import androidx.core.app.ActivityCompat;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -129,7 +129,7 @@ public class JsInterface {
     public void saveImage(String url, String mimeType) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             permittedSaveImageQ(url, mimeType);
-        } else if (ContextCompat.checkSelfPermission(
+        } else if (ActivityCompat.checkSelfPermission(
                 context,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
             permittedSaveImage(url, mimeType);

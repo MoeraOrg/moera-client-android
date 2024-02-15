@@ -23,7 +23,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.browser.customtabs.CustomTabsIntent;
-import androidx.core.content.ContextCompat;
+import androidx.core.app.ActivityCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import org.json.JSONException;
@@ -220,7 +220,7 @@ public class MainActivity extends AppCompatActivity {
                 fileChooserCallback.setCallback(filePathCallback);
                 boolean multi = fileChooserParams.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE;
 
-                if (ContextCompat.checkSelfPermission(
+                if (ActivityCompat.checkSelfPermission(
                         MainActivity.this,
                         Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
                     pickImagesLauncher.launch(multi);
@@ -270,6 +270,7 @@ public class MainActivity extends AppCompatActivity {
         return prefs.getString(Preferences.CURRENT_URL, getString(R.string.web_client_url));
     }
 
+    @SuppressLint("MissingSuperCall")
     @Override
     public void onBackPressed() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {

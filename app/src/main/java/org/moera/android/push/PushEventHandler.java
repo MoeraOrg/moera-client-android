@@ -1,19 +1,24 @@
 package org.moera.android.push;
 
+import android.Manifest;
 import android.app.ActivityManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.os.Build;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
+import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationChannelCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
@@ -163,6 +168,9 @@ public class PushEventHandler implements EventHandler {
     }
 
     private void addStory(StoryInfo story, Bitmap avatar) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !checkNotificationsPermission()) {
+            return;
+        }
         String summary = htmlToPlainText(story.getSummary());
 
         NotificationCompat.BigTextStyle bigTextStyle = new NotificationCompat.BigTextStyle();
@@ -240,6 +248,9 @@ public class PushEventHandler implements EventHandler {
     }
 
     private void displayFeedStatus(FeedWithStatus feedStatus) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !checkNotificationsPermission()) {
+            return;
+        }
         if (isAppInForeground() || !enabled || !newsEnabled) {
             return;
         }
@@ -269,6 +280,12 @@ public class PushEventHandler implements EventHandler {
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(true);
         notificationManager.notify(null, 1, builder.build());
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
+    private boolean checkNotificationsPermission() {
+        return ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED;
     }
 
     private PendingIntent getFeedTapIntent() {
