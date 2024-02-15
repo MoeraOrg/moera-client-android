@@ -4,10 +4,11 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.ext.SdkExtensions;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
 import android.webkit.ValueCallback;
@@ -20,40 +21,23 @@ import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.PickVisualMediaRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.browser.customtabs.CustomTabsIntent;
-import androidx.core.app.ActivityCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.moera.android.activitycontract.PickImage;
 import org.moera.android.push.PushEventHandler;
 import org.moera.android.push.PushWorker;
 import org.moera.android.settings.Settings;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
-
-    private class ReadPermissionCallback implements ActivityResultCallback<Boolean> {
-
-        boolean multi;
-
-        public void setMulti(boolean multi) {
-            this.multi = multi;
-        }
-
-        @Override
-        public void onActivityResult(Boolean isGranted) {
-            if (isGranted) {
-                pickImagesLauncher.launch(multi);
-            }
-        }
-
-    }
 
     private static class WritePermissionCallback implements ActivityResultCallback<Boolean> {
 
@@ -72,29 +56,48 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private static class FileChooserCallback implements ActivityResultCallback<Uri[]> {
+    private static class UriCallback {
 
-        private ValueCallback<Uri[]> callback;
+        protected ValueCallback<Uri[]> callback;
 
         public void setCallback(ValueCallback<Uri[]> callback) {
             this.callback = callback;
         }
 
+    }
+
+    private static class PickImageCallback extends UriCallback implements ActivityResultCallback<Uri> {
+
         @Override
-        public void onActivityResult(Uri[] uris) {
-            callback.onReceiveValue(uris);
+        public void onActivityResult(Uri uris) {
+            callback.onReceiveValue(new Uri[]{uris});
+        }
+
+    }
+
+    private static class PickImagesCallback extends UriCallback implements ActivityResultCallback<List<Uri>> {
+
+        @Override
+        public void onActivityResult(List<Uri> uris) {
+            Uri[] urisArray;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                urisArray = uris.toArray(Uri[]::new);
+            } else {
+                urisArray = uris.toArray(new Uri[0]);
+            }
+            callback.onReceiveValue(urisArray);
         }
 
     }
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
-    private ActivityResultLauncher<String> readPermissionLauncher;
     private ActivityResultLauncher<String> writePermissionLauncher;
-    private ActivityResultLauncher<Boolean> pickImagesLauncher;
-    private final ReadPermissionCallback readPermissionCallback = new ReadPermissionCallback();
+    private ActivityResultLauncher<PickVisualMediaRequest> pickImageLauncher;
+    private ActivityResultLauncher<PickVisualMediaRequest> pickImagesLauncher;
     private final WritePermissionCallback writePermissionCallback = new WritePermissionCallback();
-    private final FileChooserCallback fileChooserCallback = new FileChooserCallback();
+    private final PickImageCallback pickImageCallback = new PickImageCallback();
+    private final PickImagesCallback pickImagesCallback = new PickImagesCallback();
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -113,15 +116,20 @@ public class MainActivity extends AppCompatActivity {
         }
 
         PushEventHandler.createNotificationChannel(this);
-        readPermissionLauncher = registerForActivityResult(
-                new ActivityResultContracts.RequestPermission(),
-                readPermissionCallback);
         writePermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestPermission(),
                 writePermissionCallback);
+        pickImageLauncher = registerForActivityResult(
+                new ActivityResultContracts.PickVisualMedia(),
+                pickImageCallback);
+        int pickImagesLimit = 20;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                && SdkExtensions.getExtensionVersion(Build.VERSION_CODES.R) >= 2) {
+            pickImagesLimit = MediaStore.getPickImagesMaxLimit();
+        }
         pickImagesLauncher = registerForActivityResult(
-                new PickImage(),
-                fileChooserCallback);
+                new ActivityResultContracts.PickMultipleVisualMedia(pickImagesLimit),
+                pickImagesCallback);
 
         setContentView(R.layout.activity_main);
 
@@ -217,17 +225,13 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback,
                                              FileChooserParams fileChooserParams) {
-                fileChooserCallback.setCallback(filePathCallback);
                 boolean multi = fileChooserParams.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE;
-
-                if (ActivityCompat.checkSelfPermission(
-                        MainActivity.this,
-                        Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-                    pickImagesLauncher.launch(multi);
-                } else {
-                    readPermissionCallback.setMulti(multi);
-                    readPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE);
-                }
+                var callback = multi ? pickImagesCallback : pickImageCallback;
+                callback.setCallback(filePathCallback);
+                var launcher = multi ? pickImagesLauncher : pickImageLauncher;
+                launcher.launch(new PickVisualMediaRequest.Builder()
+                        .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
+                        .build());
                 return true;
             }
 
