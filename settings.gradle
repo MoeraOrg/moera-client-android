@@ -1,2 +1,9 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
 rootProject.name = "Moera"
 include ':app'

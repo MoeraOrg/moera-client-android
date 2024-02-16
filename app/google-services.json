@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "238112458675",
+    "project_id": "moera-client-android",
+    "storage_bucket": "moera-client-android.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:238112458675:android:8b82817cb557648f2b2dc6",
+        "android_client_info": {
+          "package_name": "org.moera.web.twa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPmPq6Qeq8GKm-076IuSO0fKKmTEY-ryw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
