@@ -4,6 +4,7 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -25,6 +26,7 @@ import androidx.activity.result.PickVisualMediaRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.browser.customtabs.CustomTabsIntent;
+import androidx.core.app.ActivityCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import org.json.JSONException;
@@ -34,6 +36,8 @@ import org.moera.android.push.PushWorker;
 import org.moera.android.settings.Settings;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
 
@@ -98,13 +102,21 @@ public class MainActivity extends AppCompatActivity {
     private final WritePermissionCallback writePermissionCallback = new WritePermissionCallback();
     private final PickImageCallback pickImageCallback = new PickImageCallback();
     private final PickImagesCallback pickImagesCallback = new PickImagesCallback();
+    private Settings settings;
 
-    @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Settings settings;
+        if (!loadSettings())
+            return;
+        initPermissions();
+        setContentView(R.layout.activity_main);
+        initWebView();
+        initPush();
+    }
+
+    private boolean loadSettings() {
         try {
             settings = new Settings(this);
         } catch (IOException e) {
@@ -112,10 +124,12 @@ public class MainActivity extends AppCompatActivity {
                 Log.e(TAG, "Cannot load settings", e);
             }
             finish();
-            return;
+            return false;
         }
+        return true;
+    }
 
-        PushEventHandler.createNotificationChannel(this);
+    private void initPermissions() {
         writePermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestPermission(),
                 writePermissionCallback);
@@ -131,8 +145,46 @@ public class MainActivity extends AppCompatActivity {
                 new ActivityResultContracts.PickMultipleVisualMedia(pickImagesLimit),
                 pickImagesCallback);
 
-        setContentView(R.layout.activity_main);
+        // TODO invoke when the client is connected to home
+        initNotificationsPermissions();
+    }
 
+    private void initNotificationsPermissions() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return;
+        }
+        if (!settings.getBool("mobile.notifications.enabled")) {
+            return;
+        }
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        SharedPreferences prefs = getApplicationContext().getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
+        Instant nextAsk = Instant.ofEpochSecond(prefs.getLong(Preferences.NOTIFICATION_PERMISSION_NEXT_ASK, 0));
+        if (nextAsk.isAfter(Instant.now())) {
+            return;
+        }
+        ActivityResultLauncher<String> notificationsPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                isGranted -> {
+                    if (isGranted) {
+                        return;
+                    }
+
+                    int delay = prefs.getInt(Preferences.NOTIFICATION_PERMISSION_ASK_DELAY, 0);
+                    delay = delay != 0 ? (delay <= 64 ? delay * 2 : delay) : 1;
+                    long next = Instant.now().plus(delay, ChronoUnit.DAYS).getEpochSecond();
+                    SharedPreferences.Editor editPrefs = prefs.edit();
+                    editPrefs.putLong(Preferences.NOTIFICATION_PERMISSION_ASK_DELAY, delay);
+                    editPrefs.putLong(Preferences.NOTIFICATION_PERMISSION_NEXT_ASK, next);
+                    editPrefs.apply();
+                });
+        notificationsPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private void initWebView() {
         WebView webView = getWebView();
 
         SwipeRefreshLayout swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout);
@@ -143,9 +195,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onBack() {
-                runOnUiThread(
-                        () -> pressBack()
-                );
+                runOnUiThread(MainActivity.this::pressBack);
             }
 
             @Override
@@ -238,11 +288,6 @@ public class MainActivity extends AppCompatActivity {
         });
 
         webView.loadUrl(getWebViewUrl());
-
-        SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
-        String homePage = prefs.getString(Preferences.HOME_LOCATION, null);
-        String homeToken = prefs.getString(Preferences.HOME_TOKEN, null);
-        PushWorker.schedule(this, homePage, homeToken, settings, true);
     }
 
     private String getWebViewUrl() {
@@ -272,6 +317,14 @@ public class MainActivity extends AppCompatActivity {
         }
         SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
         return prefs.getString(Preferences.CURRENT_URL, getString(R.string.web_client_url));
+    }
+
+    private void initPush() {
+        PushEventHandler.createNotificationChannel(this);
+        SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
+        String homePage = prefs.getString(Preferences.HOME_LOCATION, null);
+        String homeToken = prefs.getString(Preferences.HOME_TOKEN, null);
+        PushWorker.schedule(this, homePage, homeToken, settings, true);
     }
 
     @SuppressLint("MissingSuperCall")
