@@ -14,7 +14,6 @@ import android.util.Log;
 import android.view.View;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
-import android.webkit.WebMessage;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -29,8 +28,9 @@ import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.core.app.ActivityCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+import org.moera.android.js.JsInterface;
+import org.moera.android.js.JsInterfaceCallback;
+import org.moera.android.js.JsMessages;
 import org.moera.android.push.PushEventHandler;
 import org.moera.android.push.PushWorker;
 import org.moera.android.settings.Settings;
@@ -103,6 +103,7 @@ public class MainActivity extends AppCompatActivity {
     private final PickImageCallback pickImageCallback = new PickImageCallback();
     private final PickImagesCallback pickImagesCallback = new PickImagesCallback();
     private Settings settings;
+    private JsMessages jsMessages;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -235,7 +236,8 @@ public class MainActivity extends AppCompatActivity {
             }
 
         };
-        webView.addJavascriptInterface(new JsInterface(this, settings, jsCallback),
+        jsMessages = new JsMessages(webView, getWebClientUri());
+        webView.addJavascriptInterface(new JsInterface(this, settings, jsCallback, jsMessages),
                 "Android");
         webView.getSettings().setDomStorageEnabled(true);
         webView.getSettings().setAllowFileAccess(true);
@@ -291,32 +293,44 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String getWebViewUrl() {
+        String webViewUrl;
+
+        String webClientUrl = getString(R.string.web_client_url);
+        String webClientDevUrl = getString(R.string.web_client_dev_url);
+
         if (Objects.equals(getIntent().getAction(), Intent.ACTION_VIEW)
                 && getIntent().getData() != null) {
             Uri.Builder builder = getWebClientUri().buildUpon();
             Uri intentUri = getIntent().getData();
-            return builder.encodedPath(intentUri.getEncodedPath())
+            webViewUrl = builder.encodedPath(intentUri.getEncodedPath())
                     .encodedQuery(intentUri.getEncodedQuery())
                     .build()
                     .toString();
-        }
-        if (Objects.equals(getIntent().getAction(), Intent.ACTION_SEND)) {
+        } else if (Objects.equals(getIntent().getAction(), Intent.ACTION_SEND)) {
             SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
             Uri homeUri = Uri.parse(prefs.getString(Preferences.HOME_LOCATION, null));
             String composeUri = homeUri.buildUpon()
                     .appendPath("compose")
                     .build()
                     .toString();
-            return getWebClientUri().buildUpon()
+            webViewUrl = getWebClientUri().buildUpon()
                     .appendQueryParameter("href", composeUri)
                     .build()
                     .toString();
+        } else if (getIntent().getData() != null) {
+            webViewUrl = getIntent().getData().toString();
+        } else {
+            SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
+            webViewUrl = prefs.getString(Preferences.CURRENT_URL, webClientUrl);
         }
-        if (getIntent().getData() != null) {
-            return getIntent().getData().toString();
+
+        if (settings.getBool("mobile.developer")) {
+            webViewUrl = webViewUrl.replace(webClientUrl, webClientDevUrl);
+        } else {
+            webViewUrl = webViewUrl.replace(webClientDevUrl, webClientUrl);
         }
-        SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
-        return prefs.getString(Preferences.CURRENT_URL, getString(R.string.web_client_url));
+
+        return webViewUrl;
     }
 
     private void initPush() {
@@ -330,26 +344,12 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("MissingSuperCall")
     @Override
     public void onBackPressed() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            pressBack();
-            return;
-        }
-
-        WebView webView = getWebView();
-        try {
-            JSONObject message = new JSONObject();
-            message.put("source", "moera-android");
-            message.put("action", "back");
-            webView.postWebMessage(new WebMessage(message.toString()), getWebClientUri());
-        } catch (JSONException e) {
-            if (BuildConfig.DEBUG) {
-                Log.e(TAG, "Error building JSON", e);
-            }
-        }
+        jsMessages.back();
     }
 
     private Uri getWebClientUri() {
-        return Uri.parse(getString(R.string.web_client_url));
+        boolean developer = settings.getBool("mobile.developer");
+        return Uri.parse(getString(developer ? R.string.web_client_dev_url : R.string.web_client_url));
     }
 
     public void pressBack() {

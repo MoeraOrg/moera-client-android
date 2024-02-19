@@ -12,5 +12,12 @@
     "defaultValue": "true",
     "title": "Notify about new News feed posts on mobile",
     "modifiers": {}
+  },
+  {
+    "name": "mobile.developer",
+    "type": "bool",
+    "defaultValue": "false",
+    "title": "Use developer's version of the client on mobile",
+    "modifiers": {}
   }
 ]

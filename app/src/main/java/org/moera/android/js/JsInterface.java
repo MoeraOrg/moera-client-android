@@ -1,4 +1,4 @@
-package org.moera.android;
+package org.moera.android.js;
 
 import static android.content.Context.MODE_PRIVATE;
 
@@ -19,8 +19,13 @@ import android.webkit.JavascriptInterface;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 
+import com.google.firebase.messaging.FirebaseMessaging;
+
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.moera.android.BuildConfig;
+import org.moera.android.Preferences;
+import org.moera.android.R;
 import org.moera.android.push.PushWorker;
 import org.moera.android.settings.Settings;
 
@@ -47,16 +52,18 @@ public class JsInterface {
     private static final String IMAGE_DIRECTORY = Environment.DIRECTORY_PICTURES + File.separator + "Moera";
     private static final String APP_FLAVOR_GOOGLE_PLAY = "google-play";
     private static final String APP_FLAVOR_APK = "apk";
-    private static final int API_VERSION = 1;
+    private static final int API_VERSION = 2;
 
     private final Context context;
     private final Settings settings;
     private final JsInterfaceCallback callback;
+    private final JsMessages messages;
 
-    public JsInterface(Context context, Settings settings, JsInterfaceCallback callback) {
+    public JsInterface(Context context, Settings settings, JsInterfaceCallback callback, JsMessages messages) {
         this.context = context;
         this.settings = settings;
         this.callback = callback;
+        this.messages = messages;
     }
 
     @JavascriptInterface
@@ -273,10 +280,22 @@ public class JsInterface {
     }
 
     @JavascriptInterface
+    public void getFcmRegistrationToken(int callId) {
+        FirebaseMessaging.getInstance().getToken().addOnCompleteListener(
+            task -> {
+                if (!task.isSuccessful()) {
+                    Log.w(TAG, "Fetching FCM registration token failed", task.getException());
+                    messages.callReturn(callId, null);
+                } else {
+                    messages.callReturn(callId, task.getResult());
+                }
+            }
+        );
+    }
+
+    @JavascriptInterface
     public void log(String text) {
-        if (BuildConfig.DEBUG) {
             Log.i(TAG, text);
-        }
     }
 
 }

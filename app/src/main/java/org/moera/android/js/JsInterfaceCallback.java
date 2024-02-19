@@ -1,4 +1,4 @@
-package org.moera.android;
+package org.moera.android.js;
 
 public interface JsInterfaceCallback {
 
