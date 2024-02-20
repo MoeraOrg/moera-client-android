@@ -147,6 +147,7 @@ public class MainActivity extends AppCompatActivity {
                 pickImagesCallback);
 
         // TODO invoke when the client is connected to home
+        // TODO check GooglePlay services https://firebase.google.com/docs/cloud-messaging/android/client?authuser=0#set_up_the_sdk
         initNotificationsPermissions();
     }
 
