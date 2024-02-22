@@ -5,7 +5,7 @@
     <string name="web_client_url">https://web.moera.org</string>
     <string name="web_client_dev_url">https://web-dev.moera.org</string>
     <string name="compose_shortcut_short_label">New post</string>
-    <string name="compose_shortcut_long_label">Create a new post</string>
+    <string name="compose_shortcut_long_label">Write a new post</string>
     <string name="share_to">Share to…</string>
     <string name="url_no_handler">No way to open this URL</string>
     <string name="save_image_success">Image downloaded to the gallery</string>
