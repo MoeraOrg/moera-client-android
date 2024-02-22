@@ -320,6 +320,8 @@ public class MainActivity extends AppCompatActivity {
                     .toString();
         } else if (getIntent().getData() != null) {
             webViewUrl = getIntent().getData().toString();
+        } else if (getIntent().getExtras() != null && getIntent().getExtras().containsKey("url")) {
+            webViewUrl = getIntent().getExtras().getString("url", "");
         } else {
             SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
             webViewUrl = prefs.getString(Preferences.CURRENT_URL, webClientUrl);
