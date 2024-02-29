@@ -35,7 +35,7 @@ public class SettingsMetadata {
         ObjectMapper mapper = new ObjectMapper();
         List<SettingDescriptor> data = mapper.readValue(
                 context.getResources().openRawResource(R.raw.settings),
-                new TypeReference<List<SettingDescriptor>>() {
+                new TypeReference<>() {
                 });
         for (SettingDescriptor descriptor : data) {
             descriptors.put(descriptor.getName(), descriptor);
