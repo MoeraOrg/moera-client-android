@@ -10,7 +10,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.ColorFilter;
+import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffColorFilter;
+import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
@@ -89,7 +95,7 @@ public class MainMessagingService extends FirebaseMessagingService {
 
         String summary = "";
         String tag = "";
-        int smallIcon = R.drawable.ic_notification;
+        Integer smallIcon = null;
         int color = 0xffadb5bd;
         String url = null;
 
@@ -152,10 +158,10 @@ public class MainMessagingService extends FirebaseMessagingService {
         }
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(smallIcon)
-                .setColor(color)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setColor(0xffff6600)
                 .setContentText(summary)
-                .setLargeIcon(avatar)
+                .setLargeIcon(avatarWithIcon(avatar, smallIcon, color))
                 .setContentIntent(getTapIntent(url))
 //                .addAction(0, context.getString(R.string.mark_as_read),
 //                        getMarkAsReadIntent(story))
@@ -174,6 +180,40 @@ public class MainMessagingService extends FirebaseMessagingService {
     private Bitmap drawableToBitmap(Drawable drawable, Bitmap defaultBitmap) {
         return drawable instanceof BitmapDrawable
                 ? ((BitmapDrawable) drawable).getBitmap() : defaultBitmap;
+    }
+
+    private Bitmap avatarWithIcon(Bitmap avatar, Integer icon, int color) {
+        if (avatar == null || icon == null) {
+            return avatar;
+        }
+
+        int width = avatar.getWidth();
+        int height = avatar.getHeight();
+
+        Bitmap bitmap = Bitmap.createBitmap(width * 9 / 8, height * 9 / 8, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        canvas.drawBitmap(avatar, null, new Rect(0, 0, width, height), null);
+
+        Paint paint = new Paint();
+        paint.setColor(color);
+        paint.setStyle(Paint.Style.FILL);
+        float radius = Math.min(width, height) / 4f;
+        float circleX = width - radius / 2;
+        float circleY = height - radius / 2;
+        canvas.drawCircle(circleX, circleY, radius, paint);
+
+        Drawable drawable = ResourcesCompat.getDrawable(getResources(), icon, null);
+        if (drawable == null) {
+            return avatar;
+        }
+        ColorFilter colorFilter = new PorterDuffColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN);
+        drawable.setColorFilter(colorFilter);
+        radius *= .6;
+        drawable.setBounds(Math.round(circleX - radius), Math.round(circleY - radius),
+                Math.round(circleX + radius), Math.round(circleY + radius));
+        drawable.draw(canvas);
+
+        return bitmap;
     }
 
     private PendingIntent getTapIntent(String url) {
