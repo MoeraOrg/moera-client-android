@@ -31,8 +31,6 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import org.moera.android.js.JsInterface;
 import org.moera.android.js.JsInterfaceCallback;
 import org.moera.android.js.JsMessages;
-import org.moera.android.push.PushEventHandler;
-import org.moera.android.push.PushWorker;
 import org.moera.android.settings.Settings;
 
 import java.io.IOException;
@@ -337,11 +335,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initPush() {
-        PushEventHandler.createNotificationChannel(this);
-        SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
-        String homePage = prefs.getString(Preferences.HOME_LOCATION, null);
-        String homeToken = prefs.getString(Preferences.HOME_TOKEN, null);
-        PushWorker.schedule(this, homePage, homeToken, settings, true);
+        MainMessagingService.createNotificationChannel(this);
     }
 
     @SuppressLint("MissingSuperCall")

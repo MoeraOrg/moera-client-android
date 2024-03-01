@@ -27,6 +27,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationChannelCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.res.ResourcesCompat;
@@ -41,6 +42,7 @@ import com.google.firebase.messaging.RemoteMessage;
 
 import org.moera.android.api.model.StoryInfo;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -63,6 +65,17 @@ public class MainMessagingService extends FirebaseMessagingService {
         } else {
             Log.i(TAG, "Message data is empty");
         }
+    }
+
+    public static void createNotificationChannel(Context context) {
+        NotificationChannelCompat.Builder builder = new NotificationChannelCompat.Builder(
+                CHANNEL_ID,
+                NotificationManagerCompat.IMPORTANCE_DEFAULT)
+                .setName(context.getString(R.string.channel_name));
+        List<NotificationChannelCompat> channels = new ArrayList<>();
+        channels.add(builder.build());
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
+        notificationManager.createNotificationChannelsCompat(channels);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
@@ -98,6 +111,7 @@ public class MainMessagingService extends FirebaseMessagingService {
         Integer smallIcon = null;
         int color = 0xffadb5bd;
         String url = null;
+        String markAsReadId = null;
 
         String avatarUrl = data.get("avatarUrl");
         if (avatarUrl != null && avatar == null) {
@@ -154,6 +168,9 @@ public class MainMessagingService extends FirebaseMessagingService {
                 case "url":
                     url = entry.getValue();
                     break;
+                case "markAsReadId":
+                    markAsReadId = entry.getValue();
+                    break;
             }
         }
 
@@ -163,11 +180,12 @@ public class MainMessagingService extends FirebaseMessagingService {
                 .setContentText(summary)
                 .setLargeIcon(avatarWithIcon(avatar, smallIcon, color))
                 .setContentIntent(getTapIntent(url))
-//                .addAction(0, context.getString(R.string.mark_as_read),
-//                        getMarkAsReadIntent(story))
                 .setCategory(CATEGORY_SOCIAL)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(true);
+        if (markAsReadId != null) {
+            builder.addAction(0, getString(R.string.mark_as_read), getMarkAsReadIntent(markAsReadId, tag));
+        }
         NotificationManagerCompat notificationManager = getNotificationManager();
         notificationManager.notify(tag, 0, builder.build());
     }
@@ -217,10 +235,20 @@ public class MainMessagingService extends FirebaseMessagingService {
     }
 
     private PendingIntent getTapIntent(String url) {
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        intent.setData(Uri.parse(url));
+        Intent intent = new Intent(this, MainActivity.class)
+                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                .setData(Uri.parse(url));
         return PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    private PendingIntent getMarkAsReadIntent(String id, String tag) {
+        Log.i(TAG, "The tag = " + tag);
+        Intent intent = new Intent(this, MainReceiver.class)
+                .setAction(Actions.ACTION_MARK_AS_READ)
+                .setData(Uri.parse(tag))
+                .putExtra(Actions.EXTRA_STORY_ID, id);
+        return PendingIntent.getBroadcast(this, 0, intent,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     private NotificationManagerCompat getNotificationManager() {

@@ -20,7 +20,8 @@ public class MainReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         if (Objects.equals(intent.getAction(), Actions.ACTION_MARK_AS_READ)) {
             String storyId = intent.getStringExtra(Actions.EXTRA_STORY_ID);
-            NotificationManagerCompat.from(context).cancel(storyId, 0);
+            String tag = intent.getDataString();
+            NotificationManagerCompat.from(context).cancel(tag, 0);
             new Thread(() -> {
                 NodeApi nodeApi = new NodeApi(context);
                 try {

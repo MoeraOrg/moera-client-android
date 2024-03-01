@@ -26,7 +26,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.moera.android.BuildConfig;
 import org.moera.android.Preferences;
 import org.moera.android.R;
-import org.moera.android.push.PushWorker;
 import org.moera.android.settings.Settings;
 
 import java.io.File;
@@ -92,8 +91,6 @@ public class JsInterface {
         editor.putString(Preferences.HOME_TOKEN, token);
         editor.putString(Preferences.HOME_OWNER_NAME, ownerName);
         editor.apply();
-
-        PushWorker.schedule(context, url, token, settings, true);
     }
 
     @JavascriptInterface
@@ -113,21 +110,16 @@ public class JsInterface {
     @JavascriptInterface
     public void storeSettings(String data) {
         settings.update(data);
-
-        SharedPreferences prefs = context.getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
-        String url = prefs.getString(Preferences.HOME_LOCATION, null);
-        String token = prefs.getString(Preferences.HOME_TOKEN, null);
-        PushWorker.schedule(context, url, token, settings, true);
     }
 
     @JavascriptInterface
     public void share(String url, String title) {
         String text = StringUtils.isEmpty(title) ? url : title + " " + url;
 
-        Intent sendIntent = new Intent();
-        sendIntent.setAction(Intent.ACTION_SEND);
-        sendIntent.putExtra(Intent.EXTRA_TEXT, text);
-        sendIntent.setType("text/plain");
+        Intent sendIntent = new Intent()
+                .setAction(Intent.ACTION_SEND)
+                .putExtra(Intent.EXTRA_TEXT, text)
+                .setType("text/plain");
 
         context.startActivity(Intent.createChooser(sendIntent, context.getString(R.string.share_to)));
     }
