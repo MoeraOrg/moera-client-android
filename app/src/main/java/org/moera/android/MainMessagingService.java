@@ -61,7 +61,11 @@ public class MainMessagingService extends FirebaseMessagingService {
         }
 
         if (!message.getData().isEmpty()) {
-            postNotification(message.getData(), null);
+            if (message.getData().size() == 1 && message.getData().containsKey("tag")) {
+                cancelNotification(message.getData().get("tag"));
+            } else {
+                postNotification(message.getData(), null);
+            }
         } else {
             Log.i(TAG, "Message data is empty");
         }
@@ -249,6 +253,10 @@ public class MainMessagingService extends FirebaseMessagingService {
                 .putExtra(Actions.EXTRA_STORY_ID, id);
         return PendingIntent.getBroadcast(this, 0, intent,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+
+    private void cancelNotification(String tag) {
+        getNotificationManager().cancel(tag, 0);
     }
 
     private NotificationManagerCompat getNotificationManager() {
