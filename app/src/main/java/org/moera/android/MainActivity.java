@@ -28,10 +28,16 @@ import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.core.app.ActivityCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.firebase.messaging.FirebaseMessaging;
+
+import org.moera.android.api.NodeApi;
+import org.moera.android.api.NodeApiException;
 import org.moera.android.js.JsInterface;
 import org.moera.android.js.JsInterfaceCallback;
 import org.moera.android.js.JsMessages;
 import org.moera.android.settings.Settings;
+import org.moera.android.util.Consumer;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -107,12 +113,20 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        if (!loadSettings())
+        if (!loadSettings()) {
             return;
+        }
+        GoogleApiAvailability.getInstance().makeGooglePlayServicesAvailable(this);
         initPermissions();
         setContentView(R.layout.activity_main);
         initWebView();
         initPush();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        GoogleApiAvailability.getInstance().makeGooglePlayServicesAvailable(this);
     }
 
     private boolean loadSettings() {
@@ -143,14 +157,11 @@ public class MainActivity extends AppCompatActivity {
         pickImagesLauncher = registerForActivityResult(
                 new ActivityResultContracts.PickMultipleVisualMedia(pickImagesLimit),
                 pickImagesCallback);
-
-        // TODO invoke when the client is connected to home
-        // TODO check GooglePlay services https://firebase.google.com/docs/cloud-messaging/android/client?authuser=0#set_up_the_sdk
-        initNotificationsPermissions();
     }
 
-    private void initNotificationsPermissions() {
+    private void withNotificationsPermissions(Runnable ifGranted) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            ifGranted.run();
             return;
         }
         if (!settings.getBool("mobile.notifications.enabled")) {
@@ -158,9 +169,10 @@ public class MainActivity extends AppCompatActivity {
         }
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                 == PackageManager.PERMISSION_GRANTED) {
+            ifGranted.run();
             return;
         }
-        SharedPreferences prefs = getApplicationContext().getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
+        SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
         Instant nextAsk = Instant.ofEpochSecond(prefs.getLong(Preferences.NOTIFICATION_PERMISSION_NEXT_ASK, 0));
         if (nextAsk.isAfter(Instant.now())) {
             return;
@@ -169,6 +181,7 @@ public class MainActivity extends AppCompatActivity {
                 new ActivityResultContracts.RequestPermission(),
                 isGranted -> {
                     if (isGranted) {
+                        ifGranted.run();
                         return;
                     }
 
@@ -183,6 +196,48 @@ public class MainActivity extends AppCompatActivity {
         notificationsPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
     }
 
+    private void withFcmRegistrationToken(Consumer<String> callback) {
+        FirebaseMessaging.getInstance().getToken().addOnCompleteListener(
+                task -> {
+                    if (!task.isSuccessful()) {
+                        if (BuildConfig.DEBUG) {
+                            Log.w(TAG, "Fetching FCM registration token failed", task.getException());
+                        }
+                        return;
+                    }
+                    String fcmToken = task.getResult();
+                    if (fcmToken != null) {
+                        callback.accept(fcmToken);
+                    }
+                }
+        );
+    }
+
+    private void registerAtPushRelay(String fcmToken) {
+        SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
+        String lang = prefs.getString(Preferences.LANG, null);
+        String pushRelayClientId = prefs.getString(Preferences.PUSH_RELAY_CLIENT_ID, null);
+        String pushRelayLang = prefs.getString(Preferences.PUSH_RELAY_LANG, null);
+
+        if (!Objects.equals(fcmToken, pushRelayClientId) || !Objects.equals(lang, pushRelayLang)) {
+            new Thread(() -> {
+                NodeApi nodeApi = new NodeApi(this);
+                try {
+                    nodeApi.registerAtPushRelay(fcmToken, lang);
+                } catch (NodeApiException e) {
+                    if (BuildConfig.DEBUG) {
+                        Log.e(TAG, "Node API exception", e);
+                    }
+                }
+
+                SharedPreferences.Editor editPrefs = prefs.edit();
+                editPrefs.putString(Preferences.PUSH_RELAY_CLIENT_ID, fcmToken);
+                editPrefs.putString(Preferences.PUSH_RELAY_LANG, lang);
+                editPrefs.apply();
+            }).start();
+        }
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     private void initWebView() {
         WebView webView = getWebView();
@@ -192,6 +247,15 @@ public class MainActivity extends AppCompatActivity {
 
         webView.getSettings().setJavaScriptEnabled(true);
         JsInterfaceCallback jsCallback = new JsInterfaceCallback() {
+
+            @Override
+            public void updatePushRelay() {
+                runOnUiThread(
+                        () -> withNotificationsPermissions(
+                                () -> withFcmRegistrationToken(MainActivity.this::registerAtPushRelay)
+                        )
+                );
+            }
 
             @Override
             public void onBack() {

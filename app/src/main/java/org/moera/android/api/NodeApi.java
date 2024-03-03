@@ -8,6 +8,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.moera.android.Preferences;
 import org.moera.android.api.model.BodyMappingException;
+import org.moera.android.api.model.PushRelayClientAttributes;
+import org.moera.android.api.model.PushRelayType;
+import org.moera.android.api.model.Result;
 import org.moera.android.api.model.StoryAttributes;
 import org.moera.android.api.model.StoryInfo;
 
@@ -100,6 +103,17 @@ public class NodeApi {
         storyAttributes.setViewed(viewed);
 
         return call("PUT", url, storyAttributes, StoryInfo.class);
+    }
+
+    public Result registerAtPushRelay(String clientId, String lang) throws NodeApiException {
+        HttpUrl url = getHomeLocation().addPathSegment("push-relay").build();
+
+        PushRelayClientAttributes attributes = new PushRelayClientAttributes();
+        attributes.setType(PushRelayType.FCM);
+        attributes.setClientId(clientId);
+        attributes.setLang(lang);
+
+        return call("POST", url, attributes, Result.class);
     }
 
 }

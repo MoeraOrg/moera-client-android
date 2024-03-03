@@ -40,11 +40,13 @@ import com.bumptech.glide.request.transition.Transition;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
-import org.moera.android.api.model.StoryInfo;
+import org.moera.android.settings.Settings;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @SuppressLint("MissingFirebaseInstanceTokenRefresh")
 public class MainMessagingService extends FirebaseMessagingService {
@@ -52,11 +54,19 @@ public class MainMessagingService extends FirebaseMessagingService {
     private static final String TAG = MainMessagingService.class.getSimpleName();
     private static final String CHANNEL_ID = "org.moera.NotificationsChannel";
 
+    private Settings settings;
+
     @Override
     public void onMessageReceived(@NonNull RemoteMessage message) {
         super.onMessageReceived(message);
 
-        if (isAppInForeground()) { // TODO check if enabled
+        if (isAppInForeground()) {
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !checkNotificationsPermission()) {
+            return;
+        }
+        if (!loadSettings()) {
             return;
         }
 
@@ -67,8 +77,22 @@ public class MainMessagingService extends FirebaseMessagingService {
                 postNotification(message.getData(), null);
             }
         } else {
-            Log.i(TAG, "Message data is empty");
+            if (BuildConfig.DEBUG) {
+                Log.i(TAG, "Message data is empty");
+            }
         }
+    }
+
+    private boolean loadSettings() {
+        try {
+            settings = new Settings(this);
+        } catch (IOException e) {
+            if (BuildConfig.DEBUG) {
+                Log.e(TAG, "Cannot load settings", e);
+            }
+            return false;
+        }
+        return true;
     }
 
     public static void createNotificationChannel(Context context) {
@@ -104,9 +128,9 @@ public class MainMessagingService extends FirebaseMessagingService {
         return false;
     }
 
-    @SuppressLint("DiscouragedApi")
+    @SuppressLint({"DiscouragedApi", "MissingPermission"})
     private void postNotification(Map<String, String> data, Bitmap avatar) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !checkNotificationsPermission()) {
+        if (!settings.getBool("mobile.notifications.enabled")) {
             return;
         }
 
@@ -119,7 +143,7 @@ public class MainMessagingService extends FirebaseMessagingService {
 
         String avatarUrl = data.get("avatarUrl");
         if (avatarUrl != null && avatar == null) {
-            if (avatarUrl.equals("")) {
+            if (avatarUrl.isEmpty()) {
                 postNotification(data, getDefaultAvatar());
                 return;
             }
@@ -178,6 +202,10 @@ public class MainMessagingService extends FirebaseMessagingService {
             }
         }
 
+        if (Objects.equals(tag, "news") && !settings.getBool("mobile.notifications.news.enabled")) {
+            return;
+        }
+
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setColor(0xffff6600)
@@ -230,7 +258,7 @@ public class MainMessagingService extends FirebaseMessagingService {
         }
         ColorFilter colorFilter = new PorterDuffColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN);
         drawable.setColorFilter(colorFilter);
-        radius *= .6;
+        radius *= .6f;
         drawable.setBounds(Math.round(circleX - radius), Math.round(circleY - radius),
                 Math.round(circleX + radius), Math.round(circleY + radius));
         drawable.draw(canvas);
@@ -246,7 +274,6 @@ public class MainMessagingService extends FirebaseMessagingService {
     }
 
     private PendingIntent getMarkAsReadIntent(String id, String tag) {
-        Log.i(TAG, "The tag = " + tag);
         Intent intent = new Intent(this, MainReceiver.class)
                 .setAction(Actions.ACTION_MARK_AS_READ)
                 .setData(Uri.parse(tag))

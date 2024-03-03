@@ -19,8 +19,6 @@ import android.webkit.JavascriptInterface;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 
-import com.google.firebase.messaging.FirebaseMessaging;
-
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.moera.android.BuildConfig;
@@ -80,17 +78,19 @@ public class JsInterface {
         String prevToken = prefs.getString(Preferences.HOME_TOKEN, null);
         String prevOwnerName = prefs.getString(Preferences.HOME_OWNER_NAME, null);
 
-        if (Objects.equals(url, prevUrl)
-                && Objects.equals(token, prevToken)
-                && Objects.equals(ownerName, prevOwnerName)) {
-            return;
+        if (
+            !Objects.equals(url, prevUrl)
+            || !Objects.equals(token, prevToken)
+            || !Objects.equals(ownerName, prevOwnerName)
+        ) {
+            SharedPreferences.Editor editor = prefs.edit();
+            editor.putString(Preferences.HOME_LOCATION, url);
+            editor.putString(Preferences.HOME_TOKEN, token);
+            editor.putString(Preferences.HOME_OWNER_NAME, ownerName);
+            editor.apply();
         }
 
-        SharedPreferences.Editor editor = prefs.edit();
-        editor.putString(Preferences.HOME_LOCATION, url);
-        editor.putString(Preferences.HOME_TOKEN, token);
-        editor.putString(Preferences.HOME_OWNER_NAME, ownerName);
-        editor.apply();
+        callback.updatePushRelay();
     }
 
     @JavascriptInterface
@@ -272,22 +272,17 @@ public class JsInterface {
     }
 
     @JavascriptInterface
-    public void getFcmRegistrationToken(int callId) {
-        FirebaseMessaging.getInstance().getToken().addOnCompleteListener(
-            task -> {
-                if (!task.isSuccessful()) {
-                    Log.w(TAG, "Fetching FCM registration token failed", task.getException());
-                    messages.callReturn(callId, null);
-                } else {
-                    messages.callReturn(callId, task.getResult());
-                }
-            }
-        );
+    public void log(String text) {
+        Log.i(TAG, text);
     }
 
     @JavascriptInterface
-    public void log(String text) {
-            Log.i(TAG, text);
+    public void changeLanguage(String lang) {
+        SharedPreferences.Editor prefsEditor = context.getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE).edit();
+        prefsEditor.putString(Preferences.LANG, lang);
+        prefsEditor.apply();
+
+        callback.updatePushRelay();
     }
 
 }

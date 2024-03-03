@@ -2,6 +2,8 @@ package org.moera.android.js;
 
 public interface JsInterfaceCallback {
 
+    void updatePushRelay();
+
     void onBack();
 
     String getSharedText();
