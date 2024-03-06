@@ -16,13 +16,16 @@ public class StoryInfo {
     private Long moment;
     private Boolean viewed;
     private Boolean read;
+    private Boolean satisfied;
     private String summaryNodeName;
     private String summaryFullName;
     private AvatarImage summaryAvatar;
     private String summary;
-    private String trackingId;
+    private StorySummaryData summaryData;
     private PostingInfo posting;
+    private String postingId;
     private CommentInfo comment;
+    private String commentId;
     private String remoteNodeName;
     private String remoteFullName;
     private String remotePostingId;
@@ -105,6 +108,14 @@ public class StoryInfo {
         this.read = read;
     }
 
+    public Boolean getSatisfied() {
+        return satisfied;
+    }
+
+    public void setSatisfied(Boolean satisfied) {
+        this.satisfied = satisfied;
+    }
+
     public String getSummaryNodeName() {
         return summaryNodeName;
     }
@@ -137,12 +148,12 @@ public class StoryInfo {
         this.summary = summary;
     }
 
-    public String getTrackingId() {
-        return trackingId;
+    public StorySummaryData getSummaryData() {
+        return summaryData;
     }
 
-    public void setTrackingId(String trackingId) {
-        this.trackingId = trackingId;
+    public void setSummaryData(StorySummaryData summaryData) {
+        this.summaryData = summaryData;
     }
 
     public PostingInfo getPosting() {
@@ -153,12 +164,28 @@ public class StoryInfo {
         this.posting = posting;
     }
 
+    public String getPostingId() {
+        return postingId;
+    }
+
+    public void setPostingId(String postingId) {
+        this.postingId = postingId;
+    }
+
     public CommentInfo getComment() {
         return comment;
     }
 
     public void setComment(CommentInfo comment) {
         this.comment = comment;
+    }
+
+    public String getCommentId() {
+        return commentId;
+    }
+
+    public void setCommentId(String commentId) {
+        this.commentId = commentId;
     }
 
     public String getRemoteNodeName() {

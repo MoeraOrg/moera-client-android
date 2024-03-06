@@ -1,6 +1,6 @@
 package org.moera.android.api.model;
 
-import java.io.IOException;
+import android.util.Log;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -8,9 +8,15 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.util.StdConverter;
 
+import org.moera.android.BuildConfig;
+
+import java.io.IOException;
+
 @JsonSerialize(converter = Body.ToStringConverter.class)
 @JsonDeserialize(converter = Body.FromStringConverter.class)
 public class Body {
+
+    private static final String TAG = Body.class.getSimpleName();
 
     public static final String EMPTY = "{}";
 
@@ -32,7 +38,9 @@ public class Body {
         try {
             decoded = mapper.readValue(encoded, BodyDecoded.class);
         } catch (IOException e) {
-            throw new BodyMappingException(e);
+            if (BuildConfig.DEBUG) {
+                Log.e(TAG, "Error parsing JSON response", e);
+            }
         }
     }
 
@@ -41,7 +49,9 @@ public class Body {
         try {
             encoded = mapper.writeValueAsString(decoded);
         } catch (JsonProcessingException e) {
-            throw new BodyMappingException(e);
+            if (BuildConfig.DEBUG) {
+                Log.e(TAG, "Error parsing JSON response", e);
+            }
         }
     }
 

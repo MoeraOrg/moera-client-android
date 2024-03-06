@@ -2,12 +2,14 @@ package org.moera.android.api;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.moera.android.BuildConfig;
 import org.moera.android.Preferences;
-import org.moera.android.api.model.BodyMappingException;
 import org.moera.android.api.model.PushRelayClientAttributes;
 import org.moera.android.api.model.PushRelayType;
 import org.moera.android.api.model.Result;
@@ -27,6 +29,8 @@ import okhttp3.ResponseBody;
 
 public class NodeApi {
 
+    private static final String TAG = NodeApi.class.getSimpleName();
+
     private static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json");
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -35,6 +39,7 @@ public class NodeApi {
 
     public NodeApi(Context context) {
         this.context = context;
+        objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     }
 
     private HttpUrl.Builder getHomeLocation() {
@@ -74,7 +79,10 @@ public class NodeApi {
         try {
             return objectMapper.readValue(body.string(), klass);
         } catch (IOException e) {
-            throw new BodyMappingException(e);
+            if (BuildConfig.DEBUG) {
+                Log.e(TAG, "Error parsing JSON response", e);
+            }
+            return null;
         }
     }
 

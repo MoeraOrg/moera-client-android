@@ -3,18 +3,14 @@ package org.moera.android;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.util.Log;
 
 import androidx.core.app.NotificationManagerCompat;
 
-import org.moera.android.api.NodeApi;
-import org.moera.android.api.NodeApiException;
+import org.moera.android.operations.StoryOperations;
 
 import java.util.Objects;
 
 public class MainReceiver extends BroadcastReceiver {
-
-    private static final String TAG = MainReceiver.class.getSimpleName();
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -22,16 +18,7 @@ public class MainReceiver extends BroadcastReceiver {
             String storyId = intent.getStringExtra(Actions.EXTRA_STORY_ID);
             String tag = intent.getDataString();
             NotificationManagerCompat.from(context).cancel(tag, 0);
-            new Thread(() -> {
-                NodeApi nodeApi = new NodeApi(context);
-                try {
-                    nodeApi.putStory(storyId, true, true);
-                } catch (NodeApiException e) {
-                    if (BuildConfig.DEBUG) {
-                        Log.e(TAG, "Node API exception", e);
-                    }
-                }
-            }).start();
+            StoryOperations.storyMarkAsRead(context, storyId);
         }
     }
 

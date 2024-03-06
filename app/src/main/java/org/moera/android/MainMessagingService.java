@@ -53,7 +53,7 @@ public class MainMessagingService extends FirebaseMessagingService {
 
     private static final String TAG = MainMessagingService.class.getSimpleName();
     private static final String CHANNEL_ID = "org.moera.NotificationsChannel";
-
+    private static final int MAX_AVATAR_LOAD_ERRORS = 5;
     private Settings settings;
 
     @Override
@@ -74,7 +74,7 @@ public class MainMessagingService extends FirebaseMessagingService {
             if (message.getData().size() == 1 && message.getData().containsKey("tag")) {
                 cancelNotification(message.getData().get("tag"));
             } else {
-                postNotification(message.getData(), null);
+                postNotification(message.getData());
             }
         } else {
             if (BuildConfig.DEBUG) {
@@ -106,6 +106,10 @@ public class MainMessagingService extends FirebaseMessagingService {
         notificationManager.createNotificationChannelsCompat(channels);
     }
 
+    public static void cancelAllNotifications(Context context) {
+        getNotificationManager(context).cancelAll();
+    }
+
     @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     private boolean checkNotificationsPermission() {
         return ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
@@ -128,8 +132,16 @@ public class MainMessagingService extends FirebaseMessagingService {
         return false;
     }
 
+    private void postNotification(Map<String, String> data) {
+        postNotification(data, null, 0);
+    }
+
+    private void postNotification(Map<String, String> data, @NonNull Bitmap avatar) {
+        postNotification(data, avatar, 0);
+    }
+
     @SuppressLint({"DiscouragedApi", "MissingPermission"})
-    private void postNotification(Map<String, String> data, Bitmap avatar) {
+    private void postNotification(Map<String, String> data, @Nullable Bitmap avatar, int avatarLoadErrors) {
         if (!settings.getBool("mobile.notifications.enabled")) {
             return;
         }
@@ -159,20 +171,30 @@ public class MainMessagingService extends FirebaseMessagingService {
                 options = RequestOptions.bitmapTransform(new RoundedCorners(10));
             }
             Glide.with(this)
+                    .asBitmap()
                     .load(avatarUrl)
                     .apply(options)
-                    .into(new CustomTarget<Drawable>() {
+                    .into(new CustomTarget<Bitmap>() {
                         @Override
-                        public void onResourceReady(@NonNull Drawable resource,
-                                                    @Nullable Transition<? super Drawable> transition) {
-                            postNotification(data, drawableToBitmap(resource, getDefaultAvatar()));
+                        public void onResourceReady(@NonNull Bitmap resource,
+                                                    @Nullable Transition<? super Bitmap> transition) {
+                            postNotification(data, resource);
+                        }
+
+                        @Override
+                        public void onLoadFailed(@Nullable Drawable errorDrawable) {
+                            if (avatarLoadErrors < MAX_AVATAR_LOAD_ERRORS) {
+                                postNotification(data, null, avatarLoadErrors + 1);
+                            } else {
+                                postNotification(data, getDefaultAvatar());
+                            }
                         }
 
                         @Override
                         public void onLoadCleared(@Nullable Drawable placeholder) {
-                            postNotification(data, getDefaultAvatar());
                         }
                     });
+            return;
         }
 
         for (var entry : data.entrySet()) {
@@ -211,7 +233,7 @@ public class MainMessagingService extends FirebaseMessagingService {
                 .setColor(0xffff6600)
                 .setContentText(summary)
                 .setLargeIcon(avatarWithIcon(avatar, smallIcon, color))
-                .setContentIntent(getTapIntent(url))
+                .setContentIntent(getTapIntent(url, markAsReadId))
                 .setCategory(CATEGORY_SOCIAL)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(true);
@@ -224,21 +246,28 @@ public class MainMessagingService extends FirebaseMessagingService {
 
     private Bitmap getDefaultAvatar() {
         Drawable drawable = ResourcesCompat.getDrawable(getResources(), R.drawable.avatar, null);
-        return drawableToBitmap(drawable, null);
-    }
-
-    private Bitmap drawableToBitmap(Drawable drawable, Bitmap defaultBitmap) {
-        return drawable instanceof BitmapDrawable
-                ? ((BitmapDrawable) drawable).getBitmap() : defaultBitmap;
+        assert drawable instanceof BitmapDrawable;
+        return ((BitmapDrawable) drawable).getBitmap();
     }
 
     private Bitmap avatarWithIcon(Bitmap avatar, Integer icon, int color) {
         if (avatar == null || icon == null) {
+            if (BuildConfig.DEBUG) {
+                if (avatar == null) {
+                    Log.e(TAG, "Avatar is null");
+                }
+                if (icon == null) {
+                    Log.e(TAG, "Icon is null");
+                }
+            }
             return avatar;
         }
 
         int width = avatar.getWidth();
         int height = avatar.getHeight();
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, String.format("Avatar dimensions %d x %d", width, height));
+        }
 
         Bitmap bitmap = Bitmap.createBitmap(width * 9 / 8, height * 9 / 8, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
@@ -266,18 +295,19 @@ public class MainMessagingService extends FirebaseMessagingService {
         return bitmap;
     }
 
-    private PendingIntent getTapIntent(String url) {
+    private PendingIntent getTapIntent(String url, String storyId) {
         Intent intent = new Intent(this, MainActivity.class)
                 .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                .setData(Uri.parse(url));
+                .setData(Uri.parse(url))
+                .putExtra(Actions.EXTRA_STORY_ID, storyId);
         return PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
     }
 
-    private PendingIntent getMarkAsReadIntent(String id, String tag) {
+    private PendingIntent getMarkAsReadIntent(String storyId, String tag) {
         Intent intent = new Intent(this, MainReceiver.class)
                 .setAction(Actions.ACTION_MARK_AS_READ)
                 .setData(Uri.parse(tag))
-                .putExtra(Actions.EXTRA_STORY_ID, id);
+                .putExtra(Actions.EXTRA_STORY_ID, storyId);
         return PendingIntent.getBroadcast(this, 0, intent,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     }
@@ -287,7 +317,11 @@ public class MainMessagingService extends FirebaseMessagingService {
     }
 
     private NotificationManagerCompat getNotificationManager() {
-        return NotificationManagerCompat.from(this);
+        return getNotificationManager(this);
+    }
+
+    private static NotificationManagerCompat getNotificationManager(Context context) {
+        return NotificationManagerCompat.from(context);
     }
 
 }

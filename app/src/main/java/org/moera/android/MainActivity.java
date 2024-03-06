@@ -36,6 +36,7 @@ import org.moera.android.api.NodeApiException;
 import org.moera.android.js.JsInterface;
 import org.moera.android.js.JsInterfaceCallback;
 import org.moera.android.js.JsMessages;
+import org.moera.android.operations.StoryOperations;
 import org.moera.android.settings.Settings;
 import org.moera.android.util.Consumer;
 
@@ -118,6 +119,7 @@ public class MainActivity extends AppCompatActivity {
         }
         GoogleApiAvailability.getInstance().makeGooglePlayServicesAvailable(this);
         initPermissions();
+        markStoryAsRead();
         setContentView(R.layout.activity_main);
         initWebView();
         initPush();
@@ -127,6 +129,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         GoogleApiAvailability.getInstance().makeGooglePlayServicesAvailable(this);
+        MainMessagingService.cancelAllNotifications(this);
     }
 
     private boolean loadSettings() {
@@ -157,6 +160,15 @@ public class MainActivity extends AppCompatActivity {
         pickImagesLauncher = registerForActivityResult(
                 new ActivityResultContracts.PickMultipleVisualMedia(pickImagesLimit),
                 pickImagesCallback);
+    }
+
+    private void markStoryAsRead() {
+        if (getIntent().getExtras() != null) {
+            String storyId = getIntent().getStringExtra(Actions.EXTRA_STORY_ID);
+            if (storyId != null) {
+                StoryOperations.storyMarkAsRead(this, storyId);
+            }
+        }
     }
 
     private void withNotificationsPermissions(Runnable ifGranted) {
@@ -399,6 +411,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initPush() {
+        MainMessagingService.cancelAllNotifications(this);
         MainMessagingService.createNotificationChannel(this);
     }
 
