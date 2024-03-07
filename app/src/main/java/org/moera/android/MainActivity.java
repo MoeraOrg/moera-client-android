@@ -19,6 +19,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.PickVisualMediaRequest;
@@ -283,7 +284,13 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onBack() {
-                runOnUiThread(MainActivity.this::pressBack);
+                runOnUiThread(() -> {
+                    if (webView.canGoBack()) {
+                        webView.goBack();
+                    } else {
+                        finish();
+                    }
+                });
             }
 
             @Override
@@ -386,6 +393,15 @@ public class MainActivity extends AppCompatActivity {
 
         });
 
+        getOnBackPressedDispatcher().addCallback(new OnBackPressedCallback(true) {
+
+            @Override
+            public void handleOnBackPressed() {
+                jsMessages.back();
+            }
+
+        });
+
         webView.loadUrl(getWebViewUrl());
     }
 
@@ -437,24 +453,9 @@ public class MainActivity extends AppCompatActivity {
         MainMessagingService.createNotificationChannel(this);
     }
 
-    @SuppressLint("MissingSuperCall")
-    @Override
-    public void onBackPressed() {
-        jsMessages.back();
-    }
-
     private Uri getWebClientUri() {
         boolean developer = settings.getBool("mobile.developer");
         return Uri.parse(getString(developer ? R.string.web_client_dev_url : R.string.web_client_url));
-    }
-
-    public void pressBack() {
-        WebView webView = getWebView();
-        if (webView.canGoBack()) {
-            webView.goBack();
-        } else {
-            super.onBackPressed();
-        }
     }
 
     private WebView getWebView() {
