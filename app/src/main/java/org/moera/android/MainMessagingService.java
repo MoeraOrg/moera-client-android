@@ -228,11 +228,15 @@ public class MainMessagingService extends FirebaseMessagingService {
             return;
         }
 
+        Bitmap largeIcon = Objects.equals(tag, "news")
+                ? getBitmap(R.drawable.newspaper)
+                : avatarWithIcon(avatar, smallIcon, color);
+
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setColor(0xffff6600)
                 .setContentText(summary)
-                .setLargeIcon(avatarWithIcon(avatar, smallIcon, color))
+                .setLargeIcon(largeIcon)
                 .setContentIntent(getTapIntent(url, markAsReadId))
                 .setCategory(CATEGORY_SOCIAL)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -244,10 +248,14 @@ public class MainMessagingService extends FirebaseMessagingService {
         notificationManager.notify(tag, 0, builder.build());
     }
 
-    private Bitmap getDefaultAvatar() {
-        Drawable drawable = ResourcesCompat.getDrawable(getResources(), R.drawable.avatar, null);
+    private Bitmap getBitmap(int id) {
+        Drawable drawable = ResourcesCompat.getDrawable(getResources(), id, null);
         assert drawable instanceof BitmapDrawable;
         return ((BitmapDrawable) drawable).getBitmap();
+    }
+
+    private Bitmap getDefaultAvatar() {
+        return getBitmap(R.drawable.avatar);
     }
 
     private Bitmap avatarWithIcon(Bitmap avatar, Integer icon, int color) {
