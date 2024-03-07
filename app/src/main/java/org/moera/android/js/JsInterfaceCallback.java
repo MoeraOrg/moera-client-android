@@ -16,4 +16,6 @@ public interface JsInterfaceCallback {
 
     void setSwipeRefreshEnabled(boolean enabled);
 
+    void changeLanguage(String lang);
+
 }

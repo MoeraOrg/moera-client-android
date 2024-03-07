@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mark_as_read">Czytać</string>
+    <string name="compose_shortcut_short_label">Nowy post</string>
+    <string name="compose_shortcut_long_label">Napisz nowy post</string>
+    <string name="share_to">Udostępnij...</string>
+    <string name="url_no_handler">Nie można otworzyć tego adresu URL</string>
+    <string name="save_image_success">Zdjęcie zostanie zapisane w galerii</string>
+    <string name="save_image_failure">Nie udało się zapisać obrazu</string>
+</resources>

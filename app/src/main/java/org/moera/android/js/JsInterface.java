@@ -282,6 +282,7 @@ public class JsInterface {
         prefsEditor.putString(Preferences.LANG, lang);
         prefsEditor.apply();
 
+        callback.changeLanguage(lang);
         callback.updatePushRelay();
     }
 

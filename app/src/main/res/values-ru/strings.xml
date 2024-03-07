@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mark_as_read">Прочитано</string>
+    <string name="compose_shortcut_short_label">Написать</string>
+    <string name="compose_shortcut_long_label">Написать пост</string>
+    <string name="share_to">Поделиться...</string>
+    <string name="url_no_handler">Невозможно открыть этот URL</string>
+    <string name="save_image_success">Картинка сохранена в галерее</string>
+    <string name="save_image_failure">Не удалось сохранить картинку</string>
+</resources>

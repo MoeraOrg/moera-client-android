@@ -24,8 +24,10 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.PickVisualMediaRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.core.app.ActivityCompat;
+import androidx.core.os.LocaleListCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.gms.common.GoogleApiAvailability;
@@ -117,6 +119,7 @@ public class MainActivity extends AppCompatActivity {
         if (!loadSettings()) {
             return;
         }
+        initLocale();
         GoogleApiAvailability.getInstance().makeGooglePlayServicesAvailable(this);
         initPermissions();
         markStoryAsRead();
@@ -143,6 +146,15 @@ public class MainActivity extends AppCompatActivity {
             return false;
         }
         return true;
+    }
+
+    private void initLocale() {
+        SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
+        String lang = prefs.getString(Preferences.LANG, null);
+        if (lang != null) {
+            LocaleListCompat appLocale = LocaleListCompat.forLanguageTags(lang);
+            AppCompatDelegate.setApplicationLocales(appLocale);
+        }
     }
 
     private void initPermissions() {
@@ -307,6 +319,16 @@ public class MainActivity extends AppCompatActivity {
             public void setSwipeRefreshEnabled(boolean enabled) {
                 runOnUiThread(
                         () -> swipeRefreshLayout.setEnabled(enabled)
+                );
+            }
+
+            @Override
+            public void changeLanguage(String lang) {
+                runOnUiThread(
+                        () -> {
+                            LocaleListCompat appLocale = LocaleListCompat.forLanguageTags(lang);
+                            AppCompatDelegate.setApplicationLocales(appLocale);
+                        }
                 );
             }
 
