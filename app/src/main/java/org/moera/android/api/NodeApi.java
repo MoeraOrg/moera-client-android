@@ -86,18 +86,22 @@ public class NodeApi {
         }
     }
 
+    private <T> T parseResponse(Response response, Class<T> klass) throws IOException, NodeApiException {
+        if (!response.isSuccessful()) {
+            String errorInfo = response.body() != null
+                    ? response.body().string() : response.toString();
+            throw new NodeApiException("Request failed: " + errorInfo);
+        }
+        return parseResponse(response.body(), klass);
+    }
+
     private <T> T call(String method, HttpUrl url, Object body, Class<T> result)
             throws NodeApiException {
 
         Request request = buildRequest(method, url, body);
 
         try (Response response = client.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                String errorInfo = response.body() != null
-                        ? response.body().string() : response.toString();
-                throw new NodeApiException("Request failed: " + errorInfo);
-            }
-            return parseResponse(response.body(), result);
+            return parseResponse(response, result);
         } catch (IOException e) {
             throw new NodeApiException("Request failed", e);
         }

@@ -31,7 +31,7 @@ public class StoryInfo {
     private String remotePostingId;
     private String remoteCommentId;
     private String remoteMediaId;
-    private Map<String, String[]> operations;
+    private Map<String, String> operations;
 
     public StoryInfo() {
     }
@@ -228,11 +228,11 @@ public class StoryInfo {
         this.remoteMediaId = remoteMediaId;
     }
 
-    public Map<String, String[]> getOperations() {
+    public Map<String, String> getOperations() {
         return operations;
     }
 
-    public void setOperations(Map<String, String[]> operations) {
+    public void setOperations(Map<String, String> operations) {
         this.operations = operations;
     }
 

@@ -35,7 +35,7 @@ public class CommentInfo {
     private byte[] digest;
     private byte[] signature;
     private Short signatureVersion;
-    private Map<String, String[]> operations;
+    private Map<String, String> operations;
     private AcceptedReactions acceptedReactions;
     private ClientReactionInfo clientReaction;
     private ReactionTotalsInfo reactions;
@@ -284,11 +284,11 @@ public class CommentInfo {
         this.signatureVersion = signatureVersion;
     }
 
-    public Map<String, String[]> getOperations() {
+    public Map<String, String> getOperations() {
         return operations;
     }
 
-    public void setOperations(Map<String, String[]> operations) {
+    public void setOperations(Map<String, String> operations) {
         this.operations = operations;
     }
 

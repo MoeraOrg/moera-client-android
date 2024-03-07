@@ -12,7 +12,7 @@ public class FeedReference {
     private boolean pinned;
     private Long moment;
     private String storyId;
-    private Map<String, String[]> operations;
+    private Map<String, String> operations;
 
     public FeedReference() {
     }
@@ -57,11 +57,11 @@ public class FeedReference {
         this.storyId = storyId;
     }
 
-    public Map<String, String[]> getOperations() {
+    public Map<String, String> getOperations() {
         return operations;
     }
 
-    public void setOperations(Map<String, String[]> operations) {
+    public void setOperations(Map<String, String> operations) {
         this.operations = operations;
     }
 
