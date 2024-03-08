@@ -54,4 +54,10 @@ public class JsMessages {
         });
     }
 
+    public void networkChanged() {
+        sendMessage(message -> {
+            message.put("action", "network-changed");
+        });
+    }
+
 }

@@ -5,6 +5,9 @@ import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.net.ConnectivityManager;
+import android.net.LinkProperties;
+import android.net.Network;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -24,6 +27,7 @@ import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.PickVisualMediaRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.browser.customtabs.CustomTabsIntent;
@@ -42,6 +46,7 @@ import org.moera.android.js.JsMessages;
 import org.moera.android.operations.StoryOperations;
 import org.moera.android.settings.Settings;
 import org.moera.android.util.Consumer;
+import org.moera.android.util.Debounced;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -126,6 +131,7 @@ public class MainActivity extends AppCompatActivity {
         markStoryAsRead();
         setContentView(R.layout.activity_main);
         initWebView();
+        initConnectivityMonitor();
         initPush();
     }
 
@@ -446,6 +452,27 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return webViewUrl;
+    }
+
+    private void initConnectivityMonitor() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            return;
+        }
+
+        ConnectivityManager connectivityManager = getSystemService(ConnectivityManager.class);
+        connectivityManager.registerDefaultNetworkCallback(new ConnectivityManager.NetworkCallback() {
+
+            private final Debounced networkChanged = new Debounced(
+                    () -> runOnUiThread(jsMessages::networkChanged),
+                    2000
+            );
+
+            @Override
+            public void onLinkPropertiesChanged(@NonNull Network network, @NonNull LinkProperties linkProperties) {
+                networkChanged.execute();
+            }
+
+        });
     }
 
     private void initPush() {
