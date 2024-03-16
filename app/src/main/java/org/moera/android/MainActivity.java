@@ -2,6 +2,7 @@ package org.moera.android;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -73,6 +74,42 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    private static class NotificationPermissionCallback implements ActivityResultCallback<Boolean> {
+
+        Context context;
+        Runnable runnable;
+
+        public NotificationPermissionCallback(Context context) {
+            this.context = context;
+        }
+
+        public void setRunnable(Runnable runnable) {
+            this.runnable = runnable;
+        }
+
+        @Override
+        public void onActivityResult(Boolean isGranted) {
+            if (isGranted) {
+                runnable.run();
+                return;
+            }
+
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                return; // Will never be used in this situation anyway
+            }
+
+            SharedPreferences prefs = context.getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
+            int delay = prefs.getInt(Preferences.NOTIFICATION_PERMISSION_ASK_DELAY, 0);
+            delay = delay != 0 ? (delay <= 64 ? delay * 2 : delay) : 1;
+            long next = Instant.now().plus(delay, ChronoUnit.DAYS).getEpochSecond();
+            SharedPreferences.Editor editPrefs = prefs.edit();
+            editPrefs.putLong(Preferences.NOTIFICATION_PERMISSION_ASK_DELAY, delay);
+            editPrefs.putLong(Preferences.NOTIFICATION_PERMISSION_NEXT_ASK, next);
+            editPrefs.apply();
+        }
+
+    }
+
     private static class UriCallback {
 
         protected ValueCallback<Uri[]> callback;
@@ -110,9 +147,12 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
 
     private ActivityResultLauncher<String> writePermissionLauncher;
+    private ActivityResultLauncher<String> notificationsPermissionLauncher;
     private ActivityResultLauncher<PickVisualMediaRequest> pickImageLauncher;
     private ActivityResultLauncher<PickVisualMediaRequest> pickImagesLauncher;
     private final WritePermissionCallback writePermissionCallback = new WritePermissionCallback();
+    private final NotificationPermissionCallback notificationPermissionCallback
+            = new NotificationPermissionCallback(this);
     private final PickImageCallback pickImageCallback = new PickImageCallback();
     private final PickImagesCallback pickImagesCallback = new PickImagesCallback();
     private Settings settings;
@@ -168,6 +208,9 @@ public class MainActivity extends AppCompatActivity {
         writePermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestPermission(),
                 writePermissionCallback);
+        notificationsPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                notificationPermissionCallback);
         pickImageLauncher = registerForActivityResult(
                 new ActivityResultContracts.PickVisualMedia(),
                 pickImageCallback);
@@ -208,22 +251,7 @@ public class MainActivity extends AppCompatActivity {
         if (nextAsk.isAfter(Instant.now())) {
             return;
         }
-        ActivityResultLauncher<String> notificationsPermissionLauncher = registerForActivityResult(
-                new ActivityResultContracts.RequestPermission(),
-                isGranted -> {
-                    if (isGranted) {
-                        ifGranted.run();
-                        return;
-                    }
-
-                    int delay = prefs.getInt(Preferences.NOTIFICATION_PERMISSION_ASK_DELAY, 0);
-                    delay = delay != 0 ? (delay <= 64 ? delay * 2 : delay) : 1;
-                    long next = Instant.now().plus(delay, ChronoUnit.DAYS).getEpochSecond();
-                    SharedPreferences.Editor editPrefs = prefs.edit();
-                    editPrefs.putLong(Preferences.NOTIFICATION_PERMISSION_ASK_DELAY, delay);
-                    editPrefs.putLong(Preferences.NOTIFICATION_PERMISSION_NEXT_ASK, next);
-                    editPrefs.apply();
-                });
+        notificationPermissionCallback.setRunnable(ifGranted);
         notificationsPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
     }
 
@@ -459,20 +487,26 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        ConnectivityManager connectivityManager = getSystemService(ConnectivityManager.class);
-        connectivityManager.registerDefaultNetworkCallback(new ConnectivityManager.NetworkCallback() {
+        try {
+            ConnectivityManager connectivityManager = getSystemService(ConnectivityManager.class);
+            connectivityManager.registerDefaultNetworkCallback(new ConnectivityManager.NetworkCallback() {
 
-            private final Debounced networkChanged = new Debounced(
-                    () -> runOnUiThread(jsMessages::networkChanged),
-                    2000
-            );
+                private final Debounced networkChanged = new Debounced(
+                        () -> runOnUiThread(jsMessages::networkChanged),
+                        2000
+                );
 
-            @Override
-            public void onLinkPropertiesChanged(@NonNull Network network, @NonNull LinkProperties linkProperties) {
-                networkChanged.execute();
+                @Override
+                public void onLinkPropertiesChanged(@NonNull Network network, @NonNull LinkProperties linkProperties) {
+                    networkChanged.execute();
+                }
+
+            });
+        } catch (Exception e) {
+            if (BuildConfig.DEBUG) {
+                Log.e(TAG, "Cannot register ConnectivityManager callback", e);
             }
-
-        });
+        }
     }
 
     private void initPush() {
