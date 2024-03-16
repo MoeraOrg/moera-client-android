@@ -146,13 +146,6 @@ public class MainMessagingService extends FirebaseMessagingService {
             return;
         }
 
-        String summary = "";
-        String tag = "";
-        Integer smallIcon = null;
-        int color = 0xffadb5bd;
-        String url = null;
-        String markAsReadId = null;
-
         String avatarUrl = data.get("avatarUrl");
         if (avatarUrl != null && avatar == null) {
             if (avatarUrl.isEmpty()) {
@@ -196,6 +189,13 @@ public class MainMessagingService extends FirebaseMessagingService {
                     });
             return;
         }
+
+        String summary = "";
+        String tag = "";
+        Integer smallIcon = null;
+        int color = 0xffadb5bd;
+        String url = null;
+        String markAsReadId = null;
 
         for (var entry : data.entrySet()) {
             switch (entry.getKey()) {
