@@ -99,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             SharedPreferences prefs = context.getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
-            int delay = prefs.getInt(Preferences.NOTIFICATION_PERMISSION_ASK_DELAY, 0);
+            long delay = prefs.getLong(Preferences.NOTIFICATION_PERMISSION_ASK_DELAY, 0);
             delay = delay != 0 ? (delay <= 64 ? delay * 2 : delay) : 1;
             long next = Instant.now().plus(delay, ChronoUnit.DAYS).getEpochSecond();
             SharedPreferences.Editor editPrefs = prefs.edit();
