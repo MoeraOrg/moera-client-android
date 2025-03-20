@@ -5,7 +5,7 @@ import android.util.Log;
 
 import org.moera.android.BuildConfig;
 import org.moera.android.api.NodeApi;
-import org.moera.android.api.NodeApiException;
+import org.moera.lib.node.exception.MoeraNodeException;
 
 public class StoryOperations {
 
@@ -16,7 +16,7 @@ public class StoryOperations {
             NodeApi nodeApi = new NodeApi(context);
             try {
                 nodeApi.putStory(storyId, true, true);
-            } catch (NodeApiException e) {
+            } catch (MoeraNodeException e) {
                 if (BuildConfig.DEBUG) {
                     Log.e(TAG, "Node API exception", e);
                 }

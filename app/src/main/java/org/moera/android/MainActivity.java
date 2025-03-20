@@ -40,7 +40,6 @@ import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.firebase.messaging.FirebaseMessaging;
 
 import org.moera.android.api.NodeApi;
-import org.moera.android.api.NodeApiException;
 import org.moera.android.js.JsInterface;
 import org.moera.android.js.JsInterfaceCallback;
 import org.moera.android.js.JsMessages;
@@ -48,6 +47,7 @@ import org.moera.android.operations.StoryOperations;
 import org.moera.android.settings.Settings;
 import org.moera.android.util.Consumer;
 import org.moera.android.util.Debounced;
+import org.moera.lib.node.exception.MoeraNodeException;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -283,7 +283,7 @@ public class MainActivity extends AppCompatActivity {
                 NodeApi nodeApi = new NodeApi(this);
                 try {
                     nodeApi.registerAtPushRelay(fcmToken, lang);
-                } catch (NodeApiException e) {
+                } catch (MoeraNodeException e) {
                     if (BuildConfig.DEBUG) {
                         Log.e(TAG, "Node API exception", e);
                     }
