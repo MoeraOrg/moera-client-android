@@ -123,8 +123,8 @@ public class MainActivity extends AppCompatActivity {
     private static class PickImageCallback extends UriCallback implements ActivityResultCallback<Uri> {
 
         @Override
-        public void onActivityResult(Uri uris) {
-            callback.onReceiveValue(new Uri[]{uris});
+        public void onActivityResult(Uri uri) {
+            callback.onReceiveValue(new Uri[]{uri});
         }
 
     }
@@ -206,22 +206,28 @@ public class MainActivity extends AppCompatActivity {
 
     private void initPermissions() {
         writePermissionLauncher = registerForActivityResult(
-                new ActivityResultContracts.RequestPermission(),
-                writePermissionCallback);
+            new ActivityResultContracts.RequestPermission(),
+            writePermissionCallback
+        );
         notificationsPermissionLauncher = registerForActivityResult(
-                new ActivityResultContracts.RequestPermission(),
-                notificationPermissionCallback);
+            new ActivityResultContracts.RequestPermission(),
+            notificationPermissionCallback
+        );
         pickImageLauncher = registerForActivityResult(
-                new ActivityResultContracts.PickVisualMedia(),
-                pickImageCallback);
+            new ActivityResultContracts.PickVisualMedia(),
+            pickImageCallback
+        );
         int pickImagesLimit = 20;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-                && SdkExtensions.getExtensionVersion(Build.VERSION_CODES.R) >= 2) {
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+            && SdkExtensions.getExtensionVersion(Build.VERSION_CODES.R) >= 2
+        ) {
             pickImagesLimit = MediaStore.getPickImagesMaxLimit();
         }
         pickImagesLauncher = registerForActivityResult(
-                new ActivityResultContracts.PickMultipleVisualMedia(pickImagesLimit),
-                pickImagesCallback);
+            new ActivityResultContracts.PickMultipleVisualMedia(pickImagesLimit),
+            pickImagesCallback
+        );
     }
 
     private void markStoryAsRead() {
@@ -241,8 +247,10 @@ public class MainActivity extends AppCompatActivity {
         if (!settings.getBool("mobile.notifications.enabled")) {
             return;
         }
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                == PackageManager.PERMISSION_GRANTED) {
+        if (
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED
+        ) {
             ifGranted.run();
             return;
         }
@@ -257,18 +265,18 @@ public class MainActivity extends AppCompatActivity {
 
     private void withFcmRegistrationToken(Consumer<String> callback) {
         FirebaseMessaging.getInstance().getToken().addOnCompleteListener(
-                task -> {
-                    if (!task.isSuccessful()) {
-                        if (BuildConfig.DEBUG) {
-                            Log.w(TAG, "Fetching FCM registration token failed", task.getException());
-                        }
-                        return;
+            task -> {
+                if (!task.isSuccessful()) {
+                    if (BuildConfig.DEBUG) {
+                        Log.w(TAG, "Fetching FCM registration token failed", task.getException());
                     }
-                    String fcmToken = task.getResult();
-                    if (fcmToken != null) {
-                        callback.accept(fcmToken);
-                    }
+                    return;
                 }
+                String fcmToken = task.getResult();
+                if (fcmToken != null) {
+                    callback.accept(fcmToken);
+                }
+            }
         );
     }
 
@@ -310,9 +318,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void updatePushRelay() {
                 runOnUiThread(
-                        () -> withNotificationsPermissions(
-                                () -> withFcmRegistrationToken(MainActivity.this::registerAtPushRelay)
-                        )
+                    () -> withNotificationsPermissions(
+                        () -> withFcmRegistrationToken(MainActivity.this::registerAtPushRelay)
+                    )
                 );
             }
 
@@ -352,31 +360,33 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void toast(String text) {
                 runOnUiThread(
-                        () -> Toast.makeText(MainActivity.this, text, Toast.LENGTH_SHORT).show()
+                    () -> Toast.makeText(MainActivity.this, text, Toast.LENGTH_SHORT).show()
                 );
             }
 
             @Override
             public void setSwipeRefreshEnabled(boolean enabled) {
                 runOnUiThread(
-                        () -> swipeRefreshLayout.setEnabled(enabled)
+                    () -> swipeRefreshLayout.setEnabled(enabled)
                 );
             }
 
             @Override
             public void changeLanguage(String lang) {
                 runOnUiThread(
-                        () -> {
-                            LocaleListCompat appLocale = LocaleListCompat.forLanguageTags(lang);
-                            AppCompatDelegate.setApplicationLocales(appLocale);
-                        }
+                    () -> {
+                        LocaleListCompat appLocale = LocaleListCompat.forLanguageTags(lang);
+                        AppCompatDelegate.setApplicationLocales(appLocale);
+                    }
                 );
             }
 
         };
         jsMessages = new JsMessages(webView, getWebClientUri());
-        webView.addJavascriptInterface(new JsInterface(this, settings, jsCallback, jsMessages),
-                "Android");
+        webView.addJavascriptInterface(
+            new JsInterface(this, settings, jsCallback, jsMessages),
+            "Android"
+        );
         webView.getSettings().setDomStorageEnabled(true);
         webView.getSettings().setAllowFileAccess(true);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
@@ -402,8 +412,9 @@ public class MainActivity extends AppCompatActivity {
                     CustomTabsIntent customTabsIntent = new CustomTabsIntent.Builder().build();
                     customTabsIntent.launchUrl(MainActivity.this, request.getUrl());
                 } catch (Exception e) {
-                    Toast.makeText(MainActivity.this, getString(R.string.url_no_handler), Toast.LENGTH_SHORT)
-                            .show();
+                    Toast
+                        .makeText(MainActivity.this, getString(R.string.url_no_handler), Toast.LENGTH_SHORT)
+                        .show();
                 }
 
                 return true;
@@ -413,15 +424,18 @@ public class MainActivity extends AppCompatActivity {
         webView.setWebChromeClient(new WebChromeClient() {
 
             @Override
-            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback,
-                                             FileChooserParams fileChooserParams) {
+            public boolean onShowFileChooser(
+                WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams
+            ) {
                 boolean multi = fileChooserParams.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE;
                 var callback = multi ? pickImagesCallback : pickImageCallback;
                 callback.setCallback(filePathCallback);
                 var launcher = multi ? pickImagesLauncher : pickImageLauncher;
-                launcher.launch(new PickVisualMediaRequest.Builder()
+                launcher.launch(
+                    new PickVisualMediaRequest.Builder()
                         .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
-                        .build());
+                        .build()
+                );
                 return true;
             }
 
@@ -445,25 +459,25 @@ public class MainActivity extends AppCompatActivity {
         String webClientUrl = getString(R.string.web_client_url);
         String webClientDevUrl = getString(R.string.web_client_dev_url);
 
-        if (Objects.equals(getIntent().getAction(), Intent.ACTION_VIEW)
-                && getIntent().getData() != null) {
+        if (Objects.equals(getIntent().getAction(), Intent.ACTION_VIEW) && getIntent().getData() != null) {
             Uri.Builder builder = getWebClientUri().buildUpon();
             Uri intentUri = getIntent().getData();
-            webViewUrl = builder.encodedPath(intentUri.getEncodedPath())
-                    .encodedQuery(intentUri.getEncodedQuery())
-                    .build()
-                    .toString();
+            webViewUrl = builder
+                .encodedPath(intentUri.getEncodedPath())
+                .encodedQuery(intentUri.getEncodedQuery())
+                .build()
+                .toString();
         } else if (Objects.equals(getIntent().getAction(), Intent.ACTION_SEND)) {
             SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
             Uri homeUri = Uri.parse(prefs.getString(Preferences.HOME_LOCATION, null));
             String composeUri = homeUri.buildUpon()
-                    .appendPath("compose")
-                    .build()
-                    .toString();
+                .appendPath("compose")
+                .build()
+                .toString();
             webViewUrl = getWebClientUri().buildUpon()
-                    .appendQueryParameter("href", composeUri)
-                    .build()
-                    .toString();
+                .appendQueryParameter("href", composeUri)
+                .build()
+                .toString();
         } else if (getIntent().getData() != null) {
             webViewUrl = getIntent().getData().toString();
         } else if (getIntent().getExtras() != null && getIntent().getExtras().containsKey("url")) {
@@ -492,8 +506,8 @@ public class MainActivity extends AppCompatActivity {
             connectivityManager.registerDefaultNetworkCallback(new ConnectivityManager.NetworkCallback() {
 
                 private final Debounced networkChanged = new Debounced(
-                        () -> runOnUiThread(jsMessages::networkChanged),
-                        2000
+                    () -> runOnUiThread(jsMessages::networkChanged),
+                    2000
                 );
 
                 @Override

@@ -117,9 +117,9 @@ public class JsInterface {
         String text = StringUtils.isEmpty(title) ? url : title + " " + url;
 
         Intent sendIntent = new Intent()
-                .setAction(Intent.ACTION_SEND)
-                .putExtra(Intent.EXTRA_TEXT, text)
-                .setType("text/plain");
+            .setAction(Intent.ACTION_SEND)
+            .putExtra(Intent.EXTRA_TEXT, text)
+            .setType("text/plain");
 
         context.startActivity(Intent.createChooser(sendIntent, context.getString(R.string.share_to)));
     }
@@ -128,9 +128,10 @@ public class JsInterface {
     public void saveImage(String url, String mimeType) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             permittedSaveImageQ(url, mimeType);
-        } else if (ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+        } else if (
+            ActivityCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                == PackageManager.PERMISSION_GRANTED
+        ) {
             permittedSaveImage(url, mimeType);
         } else {
             if (callback != null) {

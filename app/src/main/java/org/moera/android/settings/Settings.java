@@ -50,9 +50,10 @@ public class Settings {
         try {
             ObjectMapper mapper = new ObjectMapper();
             List<Setting> settings = mapper.readValue(
-                    data,
-                    new TypeReference<>() {
-                    });
+                data,
+                new TypeReference<>() {
+                }
+            );
             for (Setting setting : settings) {
                 putValue(setting.getName(), setting.getValue());
             }
@@ -98,8 +99,8 @@ public class Settings {
             return null;
         }
         Object value = values.containsKey(name)
-                ? values.get(name)
-                : optionType.deserializeValue(settingsMetadata.getDescriptor(name).getDefaultValue());
+            ? values.get(name)
+            : optionType.deserializeValue(settingsMetadata.getDescriptor(name).getDefaultValue());
         return mapper.map(value, optionType);
     }
 
@@ -112,8 +113,10 @@ public class Settings {
     }
 
     public Integer getInt(String name) {
-        return forName(name,
-                (value, settingType) -> settingType.getInt(value, settingsMetadata.getSettingTypeModifiers(name)));
+        return forName(
+            name,
+            (value, settingType) -> settingType.getInt(value, settingsMetadata.getSettingTypeModifiers(name))
+        );
     }
 
     public Long getLong(String name) {
@@ -122,8 +125,7 @@ public class Settings {
 
     public void update(String data) {
         load(data);
-        SharedPreferences.Editor prefs =
-                context.getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE).edit();
+        SharedPreferences.Editor prefs = context.getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE).edit();
         prefs.putString(Preferences.SETTINGS, toString());
         prefs.apply();
     }

@@ -97,9 +97,10 @@ public class MainMessagingService extends FirebaseMessagingService {
 
     public static void createNotificationChannel(Context context) {
         NotificationChannelCompat.Builder builder = new NotificationChannelCompat.Builder(
-                CHANNEL_ID,
-                NotificationManagerCompat.IMPORTANCE_DEFAULT)
-                .setName(context.getString(R.string.channel_name));
+            CHANNEL_ID,
+            NotificationManagerCompat.IMPORTANCE_DEFAULT
+        )
+            .setName(context.getString(R.string.channel_name));
         List<NotificationChannelCompat> channels = new ArrayList<>();
         channels.add(builder.build());
         NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
@@ -113,15 +114,14 @@ public class MainMessagingService extends FirebaseMessagingService {
     @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     private boolean checkNotificationsPermission() {
         return ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                == PackageManager.PERMISSION_GRANTED;
+            == PackageManager.PERMISSION_GRANTED;
     }
 
     private boolean isAppInForeground() {
         ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         List<ActivityManager.RunningAppProcessInfo> runningProcesses = am.getRunningAppProcesses();
         for (ActivityManager.RunningAppProcessInfo processInfo : runningProcesses) {
-            if (processInfo.importance ==
-                    ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND) {
+            if (processInfo.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND) {
                 for (String activeProcess : processInfo.pkgList) {
                     if (activeProcess.equals(getPackageName())) {
                         return true;
@@ -164,29 +164,30 @@ public class MainMessagingService extends FirebaseMessagingService {
                 options = RequestOptions.bitmapTransform(new RoundedCorners(10));
             }
             Glide.with(this)
-                    .asBitmap()
-                    .load(avatarUrl)
-                    .apply(options)
-                    .into(new CustomTarget<Bitmap>() {
-                        @Override
-                        public void onResourceReady(@NonNull Bitmap resource,
-                                                    @Nullable Transition<? super Bitmap> transition) {
-                            postNotification(data, resource);
-                        }
+                .asBitmap()
+                .load(avatarUrl)
+                .apply(options)
+                .into(new CustomTarget<Bitmap>() {
+                    @Override
+                    public void onResourceReady(
+                        @NonNull Bitmap resource, @Nullable Transition<? super Bitmap> transition
+                    ) {
+                        postNotification(data, resource);
+                    }
 
-                        @Override
-                        public void onLoadFailed(@Nullable Drawable errorDrawable) {
-                            if (avatarLoadErrors < MAX_AVATAR_LOAD_ERRORS) {
-                                postNotification(data, null, avatarLoadErrors + 1);
-                            } else {
-                                postNotification(data, getDefaultAvatar());
-                            }
+                    @Override
+                    public void onLoadFailed(@Nullable Drawable errorDrawable) {
+                        if (avatarLoadErrors < MAX_AVATAR_LOAD_ERRORS) {
+                            postNotification(data, null, avatarLoadErrors + 1);
+                        } else {
+                            postNotification(data, getDefaultAvatar());
                         }
+                    }
 
-                        @Override
-                        public void onLoadCleared(@Nullable Drawable placeholder) {
-                        }
-                    });
+                    @Override
+                    public void onLoadCleared(@Nullable Drawable placeholder) {
+                    }
+                });
             return;
         }
 
@@ -229,18 +230,18 @@ public class MainMessagingService extends FirebaseMessagingService {
         }
 
         Bitmap largeIcon = Objects.equals(tag, "news")
-                ? getBitmap(R.drawable.newspaper)
-                : avatarWithIcon(avatar, smallIcon, color);
+            ? getBitmap(R.drawable.newspaper)
+            : avatarWithIcon(avatar, smallIcon, color);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setColor(0xffff6600)
-                .setContentText(summary)
-                .setLargeIcon(largeIcon)
-                .setContentIntent(getTapIntent(url, markAsReadId))
-                .setCategory(CATEGORY_SOCIAL)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setAutoCancel(true);
+            .setSmallIcon(R.drawable.ic_notification)
+            .setColor(0xffff6600)
+            .setContentText(summary)
+            .setLargeIcon(largeIcon)
+            .setContentIntent(getTapIntent(url, markAsReadId))
+            .setCategory(CATEGORY_SOCIAL)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setAutoCancel(true);
         if (markAsReadId != null) {
             builder.addAction(0, getString(R.string.mark_as_read), getMarkAsReadIntent(markAsReadId, tag));
         }
@@ -296,8 +297,10 @@ public class MainMessagingService extends FirebaseMessagingService {
         ColorFilter colorFilter = new PorterDuffColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN);
         drawable.setColorFilter(colorFilter);
         radius *= .6f;
-        drawable.setBounds(Math.round(circleX - radius), Math.round(circleY - radius),
-                Math.round(circleX + radius), Math.round(circleY + radius));
+        drawable.setBounds(
+            Math.round(circleX - radius), Math.round(circleY - radius),
+            Math.round(circleX + radius), Math.round(circleY + radius)
+        );
         drawable.draw(canvas);
 
         return bitmap;
@@ -305,19 +308,23 @@ public class MainMessagingService extends FirebaseMessagingService {
 
     private PendingIntent getTapIntent(String url, String storyId) {
         Intent intent = new Intent(this, MainActivity.class)
-                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                .setData(Uri.parse(url))
-                .putExtra(Actions.EXTRA_STORY_ID, storyId);
+            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            .setData(Uri.parse(url))
+            .putExtra(Actions.EXTRA_STORY_ID, storyId);
         return PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
     }
 
     private PendingIntent getMarkAsReadIntent(String storyId, String tag) {
         Intent intent = new Intent(this, MainReceiver.class)
-                .setAction(Actions.ACTION_MARK_AS_READ)
-                .setData(Uri.parse(tag))
-                .putExtra(Actions.EXTRA_STORY_ID, storyId);
-        return PendingIntent.getBroadcast(this, 0, intent,
-                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+            .setAction(Actions.ACTION_MARK_AS_READ)
+            .setData(Uri.parse(tag))
+            .putExtra(Actions.EXTRA_STORY_ID, storyId);
+        return PendingIntent.getBroadcast(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+        );
     }
 
     private void cancelNotification(String tag) {
