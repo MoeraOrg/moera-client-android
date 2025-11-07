@@ -8,7 +8,7 @@ android {
         applicationId "org.moera.web.twa"
         minSdk 23
         //noinspection EditedTargetSdkVersion
-        targetSdk 34
+        targetSdk 36
         versionCode 13
         versionName "0.16.0"
 
