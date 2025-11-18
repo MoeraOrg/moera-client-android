@@ -148,6 +148,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private static final String TAG = MainActivity.class.getSimpleName();
+    private static final long PUSH_RELAY_REFRESH_INTERVAL = 7 * 24 * 60 * 60; // 7 days in seconds
 
     private ActivityResultLauncher<String> writePermissionLauncher;
     private ActivityResultLauncher<String> notificationsPermissionLauncher;
@@ -296,16 +297,36 @@ public class MainActivity extends AppCompatActivity {
         String pushRelayLang = prefs.getString(Preferences.PUSH_RELAY_LANG, null);
 
         if (!Objects.equals(fcmToken, pushRelayClientId) || !Objects.equals(lang, pushRelayLang)) {
-            new Thread(() -> {
-                NodeApi nodeApi = new NodeApi(this);
-                nodeApi.registerAtPushRelay(fcmToken, lang);
-
-                SharedPreferences.Editor editPrefs = prefs.edit();
-                editPrefs.putString(Preferences.PUSH_RELAY_CLIENT_ID, fcmToken);
-                editPrefs.putString(Preferences.PUSH_RELAY_LANG, lang);
-                editPrefs.apply();
-            }).start();
+            asyncRegisterAtPushRelay(fcmToken, lang, prefs);
         }
+    }
+
+    private void refreshRegistrationAtPushRelay() {
+        SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
+        long updatedAt = prefs.getLong(Preferences.PUSH_RELAY_UPDATED_AT, 0);
+        if (System.currentTimeMillis() / 1000 - updatedAt < PUSH_RELAY_REFRESH_INTERVAL) {
+            return;
+        }
+        String homeLocation = prefs.getString(Preferences.HOME_LOCATION, null);
+        if (homeLocation == null) {
+            return;
+        }
+        String clientId = prefs.getString(Preferences.PUSH_RELAY_CLIENT_ID, null);
+        String lang = prefs.getString(Preferences.PUSH_RELAY_LANG, null);
+        asyncRegisterAtPushRelay(clientId, lang, prefs);
+    }
+
+    private void asyncRegisterAtPushRelay(String fcmToken, String lang, SharedPreferences prefs) {
+        new Thread(() -> {
+            NodeApi nodeApi = new NodeApi(this);
+            nodeApi.registerAtPushRelay(fcmToken, lang);
+
+            SharedPreferences.Editor editPrefs = prefs.edit();
+            editPrefs.putString(Preferences.PUSH_RELAY_CLIENT_ID, fcmToken);
+            editPrefs.putString(Preferences.PUSH_RELAY_LANG, lang);
+            editPrefs.putLong(Preferences.PUSH_RELAY_UPDATED_AT, System.currentTimeMillis() / 1000);
+            editPrefs.apply();
+        }).start();
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -529,6 +550,7 @@ public class MainActivity extends AppCompatActivity {
     private void initPush() {
         MainMessagingService.cancelAllNotifications(this);
         MainMessagingService.createNotificationChannel(this);
+        refreshRegistrationAtPushRelay();
     }
 
     private Uri getWebClientUri() {
