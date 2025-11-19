@@ -294,11 +294,17 @@ public class MainActivity extends AppCompatActivity {
 
     private void registerAtPushRelay(String fcmToken) {
         SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
+        String homeLocation = prefs.getString(Preferences.HOME_LOCATION, null);
         String lang = prefs.getString(Preferences.LANG, null);
+        String pushRelayHomeLocation = prefs.getString(Preferences.PUSH_RELAY_HOME_LOCATION, null);
         String pushRelayClientId = prefs.getString(Preferences.PUSH_RELAY_CLIENT_ID, null);
         String pushRelayLang = prefs.getString(Preferences.PUSH_RELAY_LANG, null);
 
-        if (!Objects.equals(fcmToken, pushRelayClientId) || !Objects.equals(lang, pushRelayLang)) {
+        if (
+            !Objects.equals(homeLocation, pushRelayHomeLocation)
+            || !Objects.equals(fcmToken, pushRelayClientId)
+            || !Objects.equals(lang, pushRelayLang)
+        ) {
             asyncRegisterAtPushRelay(fcmToken, lang, prefs);
         }
     }
@@ -324,6 +330,8 @@ public class MainActivity extends AppCompatActivity {
             nodeApi.registerAtPushRelay(fcmToken, lang);
 
             SharedPreferences.Editor editPrefs = prefs.edit();
+            String homeLocation = prefs.getString(Preferences.HOME_LOCATION, null);
+            editPrefs.putString(Preferences.PUSH_RELAY_HOME_LOCATION, homeLocation);
             editPrefs.putString(Preferences.PUSH_RELAY_CLIENT_ID, fcmToken);
             editPrefs.putString(Preferences.PUSH_RELAY_LANG, lang);
             editPrefs.putLong(Preferences.PUSH_RELAY_UPDATED_AT, System.currentTimeMillis() / 1000);

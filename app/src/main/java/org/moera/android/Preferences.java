@@ -9,6 +9,7 @@ public class Preferences {
     public static final String HOME_TOKEN = "homeToken";
     public static final String HOME_OWNER_NAME = "homeOwnerName";
     public static final String LANG = "lang";
+    public static final String PUSH_RELAY_HOME_LOCATION = "pushRelayHomeLocation";
     public static final String PUSH_RELAY_CLIENT_ID = "pushRelayClientId";
     public static final String PUSH_RELAY_LANG = "pushRelayLang";
     public static final String PUSH_RELAY_UPDATED_AT = "pushRelayUpdatedAt";
