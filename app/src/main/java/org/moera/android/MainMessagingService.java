@@ -9,6 +9,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -260,13 +261,15 @@ public class MainMessagingService extends FirebaseMessagingService {
     }
 
     private Bitmap avatarWithIcon(Bitmap avatar, Integer icon, int color) {
-        if (avatar == null || icon == null) {
+        if (avatar == null || icon == null || icon == 0) {
             if (BuildConfig.DEBUG) {
                 if (avatar == null) {
                     Log.e(TAG, "Avatar is null");
                 }
                 if (icon == null) {
                     Log.e(TAG, "Icon is null");
+                } else if (icon == 0) {
+                    Log.e(TAG, "Icon does not exist");
                 }
             }
             return avatar;
@@ -290,18 +293,28 @@ public class MainMessagingService extends FirebaseMessagingService {
         float circleY = height - radius / 2;
         canvas.drawCircle(circleX, circleY, radius, paint);
 
-        Drawable drawable = ResourcesCompat.getDrawable(getResources(), icon, null);
-        if (drawable == null) {
+        try {
+            Drawable drawable = ResourcesCompat.getDrawable(getResources(), icon, null);
+            if (drawable == null) {
+                if (BuildConfig.DEBUG) {
+                    Log.e(TAG, "Icon is not found");
+                }
+                return avatar;
+            }
+            ColorFilter colorFilter = new PorterDuffColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN);
+            drawable.setColorFilter(colorFilter);
+            radius *= .6f;
+            drawable.setBounds(
+                Math.round(circleX - radius), Math.round(circleY - radius),
+                Math.round(circleX + radius), Math.round(circleY + radius)
+            );
+            drawable.draw(canvas);
+        } catch (Resources.NotFoundException e) {
+            if (BuildConfig.DEBUG) {
+                Log.e(TAG, "Icon is not found");
+            }
             return avatar;
         }
-        ColorFilter colorFilter = new PorterDuffColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN);
-        drawable.setColorFilter(colorFilter);
-        radius *= .6f;
-        drawable.setBounds(
-            Math.round(circleX - radius), Math.round(circleY - radius),
-            Math.round(circleX + radius), Math.round(circleY + radius)
-        );
-        drawable.draw(canvas);
 
         return bitmap;
     }
