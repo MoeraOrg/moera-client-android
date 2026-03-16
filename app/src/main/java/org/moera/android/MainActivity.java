@@ -51,6 +51,7 @@ import org.moera.android.operations.StoryOperations;
 import org.moera.android.settings.Settings;
 import org.moera.android.util.Consumer;
 import org.moera.android.util.Debounced;
+import org.moera.lib.UniversalLocation;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -488,10 +489,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String getWebViewUrl() {
+        SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
+
         String webViewUrl;
 
-        String webClientUrl = getString(R.string.web_client_url);
-        String webClientDevUrl = getString(R.string.web_client_dev_url);
+        final String webClientUrl = getString(R.string.web_client_url);
+        final String webClientDevUrl = getString(R.string.web_client_dev_url);
 
         if (Objects.equals(getIntent().getAction(), Intent.ACTION_VIEW) && getIntent().getData() != null) {
             Uri.Builder builder = getWebClientUri().buildUpon();
@@ -502,14 +505,13 @@ public class MainActivity extends AppCompatActivity {
                 .build()
                 .toString();
         } else if (Objects.equals(getIntent().getAction(), Intent.ACTION_SEND)) {
-            SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
             Uri homeUri = Uri.parse(prefs.getString(Preferences.HOME_LOCATION, null));
-            String composeUri = homeUri.buildUpon()
-                .appendPath("compose")
-                .build()
-                .toString();
+            String homeOwnerName = prefs.getString(Preferences.HOME_OWNER_NAME, null);
+            UniversalLocation uni = new UniversalLocation(
+                homeOwnerName, homeUri.getScheme(), homeUri.getAuthority(), "/compose", null, null
+            );
             webViewUrl = getWebClientUri().buildUpon()
-                .appendQueryParameter("href", composeUri)
+                .encodedPath(uni.toString())
                 .build()
                 .toString();
         } else if (getIntent().getData() != null) {
@@ -517,7 +519,6 @@ public class MainActivity extends AppCompatActivity {
         } else if (getIntent().getExtras() != null && getIntent().getExtras().containsKey("url")) {
             webViewUrl = getIntent().getExtras().getString("url", "");
         } else {
-            SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
             webViewUrl = prefs.getString(Preferences.CURRENT_URL, webClientUrl);
         }
 
