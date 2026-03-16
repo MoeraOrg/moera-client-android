@@ -2,6 +2,12 @@ package org.moera.android;
 
 import static androidx.core.app.NotificationCompat.CATEGORY_SOCIAL;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.ActivityManager;
@@ -9,21 +15,13 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
-import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.ColorFilter;
-import android.graphics.Paint;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffColorFilter;
-import android.graphics.Rect;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.util.Log;
-
+import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
@@ -31,8 +29,6 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationChannelCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
-import androidx.core.content.res.ResourcesCompat;
-
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 import com.bumptech.glide.request.RequestOptions;
@@ -40,14 +36,9 @@ import com.bumptech.glide.request.target.CustomTarget;
 import com.bumptech.glide.request.transition.Transition;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
-
+import org.apache.commons.lang3.ObjectUtils;
 import org.moera.android.settings.Settings;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import org.moera.android.util.AvatarUtil;
 
 @SuppressLint("MissingFirebaseInstanceTokenRefresh")
 public class MainMessagingService extends FirebaseMessagingService {
@@ -147,10 +138,12 @@ public class MainMessagingService extends FirebaseMessagingService {
             return;
         }
 
-        String avatarUrl = data.get("avatarUrl");
-        if (avatarUrl != null && avatar == null) {
-            if (avatarUrl.isEmpty()) {
-                postNotification(data, getDefaultAvatar());
+        if (avatar == null) {
+            String nodeName = data.get("summaryNodeName");
+            String summaryNodeName = ObjectUtils.isEmpty(nodeName) ? null : nodeName;
+            String avatarUrl = data.get("avatarUrl");
+            if (ObjectUtils.isEmpty(avatarUrl)) {
+                postNotification(data, AvatarUtil.avatarWithLetters(summaryNodeName));
                 return;
             }
 
@@ -181,7 +174,7 @@ public class MainMessagingService extends FirebaseMessagingService {
                         if (avatarLoadErrors < MAX_AVATAR_LOAD_ERRORS) {
                             postNotification(data, null, avatarLoadErrors + 1);
                         } else {
-                            postNotification(data, getDefaultAvatar());
+                            postNotification(data, AvatarUtil.avatarWithLetters(summaryNodeName));
                         }
                     }
 
@@ -195,7 +188,7 @@ public class MainMessagingService extends FirebaseMessagingService {
         String summary = "";
         String tag = "";
         Integer smallIcon = null;
-        int color = 0xffadb5bd;
+        @ColorInt int color = 0xffadb5bd;
         String url = null;
         String markAsReadId = null;
 
@@ -231,8 +224,8 @@ public class MainMessagingService extends FirebaseMessagingService {
         }
 
         Bitmap largeIcon = Objects.equals(tag, "news")
-            ? getBitmap(R.drawable.newspaper)
-            : avatarWithIcon(avatar, smallIcon, color);
+            ? AvatarUtil.getBitmap(getResources(), R.drawable.newspaper)
+            : AvatarUtil.avatarWithIcon(avatar, getResources(), smallIcon, color);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
@@ -248,75 +241,6 @@ public class MainMessagingService extends FirebaseMessagingService {
         }
         NotificationManagerCompat notificationManager = getNotificationManager();
         notificationManager.notify(tag, 0, builder.build());
-    }
-
-    private Bitmap getBitmap(int id) {
-        Drawable drawable = ResourcesCompat.getDrawable(getResources(), id, null);
-        assert drawable instanceof BitmapDrawable;
-        return ((BitmapDrawable) drawable).getBitmap();
-    }
-
-    private Bitmap getDefaultAvatar() {
-        return getBitmap(R.drawable.avatar);
-    }
-
-    private Bitmap avatarWithIcon(Bitmap avatar, Integer icon, int color) {
-        if (avatar == null || icon == null || icon == 0) {
-            if (BuildConfig.DEBUG) {
-                if (avatar == null) {
-                    Log.e(TAG, "Avatar is null");
-                }
-                if (icon == null) {
-                    Log.e(TAG, "Icon is null");
-                } else if (icon == 0) {
-                    Log.e(TAG, "Icon does not exist");
-                }
-            }
-            return avatar;
-        }
-
-        int width = avatar.getWidth();
-        int height = avatar.getHeight();
-        if (BuildConfig.DEBUG) {
-            Log.d(TAG, String.format("Avatar dimensions %d x %d", width, height));
-        }
-
-        Bitmap bitmap = Bitmap.createBitmap(width * 9 / 8, height * 9 / 8, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
-        canvas.drawBitmap(avatar, null, new Rect(0, 0, width, height), null);
-
-        Paint paint = new Paint();
-        paint.setColor(color);
-        paint.setStyle(Paint.Style.FILL);
-        float radius = Math.min(width, height) / 4f;
-        float circleX = width - radius / 2;
-        float circleY = height - radius / 2;
-        canvas.drawCircle(circleX, circleY, radius, paint);
-
-        try {
-            Drawable drawable = ResourcesCompat.getDrawable(getResources(), icon, null);
-            if (drawable == null) {
-                if (BuildConfig.DEBUG) {
-                    Log.e(TAG, "Icon is not found");
-                }
-                return avatar;
-            }
-            ColorFilter colorFilter = new PorterDuffColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN);
-            drawable.setColorFilter(colorFilter);
-            radius *= .6f;
-            drawable.setBounds(
-                Math.round(circleX - radius), Math.round(circleY - radius),
-                Math.round(circleX + radius), Math.round(circleY + radius)
-            );
-            drawable.draw(canvas);
-        } catch (Resources.NotFoundException e) {
-            if (BuildConfig.DEBUG) {
-                Log.e(TAG, "Icon is not found");
-            }
-            return avatar;
-        }
-
-        return bitmap;
     }
 
     private PendingIntent getTapIntent(String url, String storyId) {
