@@ -6,9 +6,9 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 import org.moera.android.BuildConfig;
 import org.moera.android.Preferences;
@@ -57,7 +57,7 @@ public class Settings {
             for (Setting setting : settings) {
                 putValue(setting.getName(), setting.getValue());
             }
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             // ignore
         }
     }
@@ -148,7 +148,7 @@ public class Settings {
         ObjectMapper mapper = new ObjectMapper();
         try {
             return mapper.writeValueAsString(settings);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return "[]";
         }
     }

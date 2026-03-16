@@ -6,7 +6,7 @@ plugins {
 android {
     defaultConfig {
         applicationId "org.moera.web.twa"
-        minSdk 23
+        minSdk 26
         //noinspection EditedTargetSdkVersion
         targetSdk 36
         versionCode 14
@@ -49,8 +49,8 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:34.10.0')
     implementation 'com.google.firebase:firebase-messaging'
     implementation 'com.fasterxml.jackson.core:jackson-annotations:2.21'
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.21.1'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.1'
+    implementation 'tools.jackson.core:jackson-core:3.0.4'
+    implementation 'tools.jackson.core:jackson-databind:3.0.4'
     implementation 'com.github.bumptech.glide:glide:5.0.5'
     implementation 'commons-io:commons-io:2.21.0'
     implementation 'org.apache.commons:commons-text:1.15.0'

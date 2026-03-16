@@ -3,8 +3,8 @@ package org.moera.android.settings;
 import android.content.Context;
 import android.util.Log;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 import org.moera.android.BuildConfig;
 import org.moera.android.R;

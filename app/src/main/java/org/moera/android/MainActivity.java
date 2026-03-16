@@ -433,7 +433,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && request.isRedirect()) {
+                if (request.isRedirect()) {
                     return false;
                 }
                 String clientHost = getWebClientUri().getHost();
@@ -531,10 +531,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initConnectivityMonitor() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
-            return;
-        }
-
         try {
             ConnectivityManager connectivityManager = getSystemService(ConnectivityManager.class);
             connectivityManager.registerDefaultNetworkCallback(new ConnectivityManager.NetworkCallback() {
