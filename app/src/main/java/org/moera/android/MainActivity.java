@@ -2,6 +2,7 @@ package org.moera.android;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -16,6 +17,7 @@ import android.os.ext.SdkExtensions;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
+import android.webkit.MimeTypeMap;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -56,6 +58,7 @@ import org.moera.lib.UniversalLocation;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -117,33 +120,59 @@ public class MainActivity extends AppCompatActivity {
     private static class UriCallback {
 
         protected ValueCallback<Uri[]> callback;
+        protected JsMessages jsMessages;
 
         public void setCallback(ValueCallback<Uri[]> callback) {
             this.callback = callback;
         }
 
-    }
-
-    private static class PickImageCallback extends UriCallback implements ActivityResultCallback<Uri> {
-
-        @Override
-        public void onActivityResult(Uri uri) {
-            callback.onReceiveValue(new Uri[]{uri});
+        public void setJsMessages(JsMessages jsMessages) {
+            this.jsMessages = jsMessages;
         }
 
     }
 
-    private static class PickImagesCallback extends UriCallback implements ActivityResultCallback<List<Uri>> {
+    private static class PickFileCallback extends UriCallback implements ActivityResultCallback<Uri> {
+
+        @Override
+        public void onActivityResult(Uri uri) {
+            if (uri == null) {
+                callback.onReceiveValue(null);
+                return;
+            }
+            if (Objects.equals(uri.getScheme(), "content")) {
+                callback.onReceiveValue(null);
+                jsMessages.contentSelected(List.of(uri.toString()));
+            } else {
+                callback.onReceiveValue(new Uri[]{uri});
+            }
+        }
+
+    }
+
+    private static class PickFilesCallback extends UriCallback implements ActivityResultCallback<List<Uri>> {
 
         @Override
         public void onActivityResult(List<Uri> uris) {
-            Uri[] urisArray;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                urisArray = uris.toArray(Uri[]::new);
-            } else {
-                urisArray = uris.toArray(new Uri[0]);
+            if (uris == null || uris.isEmpty()) {
+                callback.onReceiveValue(null);
+                return;
             }
-            callback.onReceiveValue(urisArray);
+
+            List<String> contentUris = new ArrayList<>();
+            List<Uri> otherUris = new ArrayList<>();
+            for (Uri uri : uris) {
+                if (Objects.equals(uri.getScheme(), "content")) {
+                    contentUris.add(uri.toString());
+                } else {
+                    otherUris.add(uri);
+                }
+            }
+
+            if (!contentUris.isEmpty()) {
+                jsMessages.contentSelected(contentUris);
+            }
+            callback.onReceiveValue(otherUris.isEmpty() ? null : otherUris.toArray(new Uri[0]));
         }
 
     }
@@ -153,13 +182,15 @@ public class MainActivity extends AppCompatActivity {
 
     private ActivityResultLauncher<String> writePermissionLauncher;
     private ActivityResultLauncher<String> notificationsPermissionLauncher;
+    private ActivityResultLauncher<String> pickFileLauncher;
+    private ActivityResultLauncher<String> pickFilesLauncher;
     private ActivityResultLauncher<PickVisualMediaRequest> pickImageLauncher;
     private ActivityResultLauncher<PickVisualMediaRequest> pickImagesLauncher;
     private final WritePermissionCallback writePermissionCallback = new WritePermissionCallback();
     private final NotificationPermissionCallback notificationPermissionCallback
             = new NotificationPermissionCallback(this);
-    private final PickImageCallback pickImageCallback = new PickImageCallback();
-    private final PickImagesCallback pickImagesCallback = new PickImagesCallback();
+    private final PickFileCallback pickFileCallback = new PickFileCallback();
+    private final PickFilesCallback pickFilesCallback = new PickFilesCallback();
     private Settings settings;
     private JsMessages jsMessages;
 
@@ -228,8 +259,23 @@ public class MainActivity extends AppCompatActivity {
         );
         pickImageLauncher = registerForActivityResult(
             new ActivityResultContracts.PickVisualMedia(),
-            pickImageCallback
+            pickFileCallback
         );
+        pickImagesLauncher = registerForActivityResult(
+            new ActivityResultContracts.PickMultipleVisualMedia(getPickImagesLimit()),
+            pickFilesCallback
+        );
+        pickFileLauncher = registerForActivityResult(
+            new ActivityResultContracts.GetContent(),
+            pickFileCallback
+        );
+        pickFilesLauncher = registerForActivityResult(
+            new ActivityResultContracts.GetMultipleContents(),
+            pickFilesCallback
+        );
+    }
+
+    private static int getPickImagesLimit() {
         int pickImagesLimit = 20;
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
@@ -237,10 +283,7 @@ public class MainActivity extends AppCompatActivity {
         ) {
             pickImagesLimit = MediaStore.getPickImagesMaxLimit();
         }
-        pickImagesLauncher = registerForActivityResult(
-            new ActivityResultContracts.PickMultipleVisualMedia(pickImagesLimit),
-            pickImagesCallback
-        );
+        return pickImagesLimit;
     }
 
     private void markStoryAsRead() {
@@ -418,12 +461,10 @@ public class MainActivity extends AppCompatActivity {
 
         };
         jsMessages = new JsMessages(webView, getWebClientUri());
-        webView.addJavascriptInterface(
-            new JsInterface(this, settings, jsCallback, jsMessages),
-            "Android"
-        );
+        webView.addJavascriptInterface(new JsInterface(this, settings, jsCallback), "Android");
         webView.getSettings().setDomStorageEnabled(true);
         webView.getSettings().setAllowFileAccess(true);
+        webView.getSettings().setAllowContentAccess(true);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         webView.setWebViewClient(new WebViewClient() {
 
@@ -463,14 +504,34 @@ public class MainActivity extends AppCompatActivity {
                 WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams
             ) {
                 boolean multi = fileChooserParams.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE;
-                var callback = multi ? pickImagesCallback : pickImageCallback;
+                String[] acceptTypes = fileChooserParams.getAcceptTypes();
+
+                var callback = multi ? pickFilesCallback : pickFileCallback;
                 callback.setCallback(filePathCallback);
-                var launcher = multi ? pickImagesLauncher : pickImageLauncher;
-                launcher.launch(
-                    new PickVisualMediaRequest.Builder()
-                        .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
-                        .build()
-                );
+                callback.setJsMessages(jsMessages);
+
+                try {
+                    if (isImagesOnly(acceptTypes)) {
+                        var launcher = multi ? pickImagesLauncher : pickImageLauncher;
+                        launcher.launch(
+                            new PickVisualMediaRequest.Builder()
+                                .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
+                                .build()
+                        );
+                    } else {
+                        var launcher = multi ? pickFilesLauncher : pickFileLauncher;
+                        String mimeType = acceptTypes != null && acceptTypes.length > 0 && !acceptTypes[0].isEmpty()
+                                ? extensionToMimeType(acceptTypes[0]) : null;
+                        if (mimeType == null) {
+                            mimeType = "*/*";
+                        }
+                        launcher.launch(mimeType);
+                    }
+                } catch (ActivityNotFoundException e) {
+                    Toast.makeText(MainActivity.this, getString(R.string.url_no_handler), Toast.LENGTH_SHORT).show();
+                    filePathCallback.onReceiveValue(null);
+                }
+
                 return true;
             }
 
@@ -486,6 +547,26 @@ public class MainActivity extends AppCompatActivity {
         });
 
         webView.loadUrl(getWebViewUrl());
+    }
+
+    private boolean isImagesOnly(String[] acceptTypes) {
+        if (acceptTypes == null || acceptTypes.length == 0) {
+            return false;
+        }
+        for (String type : acceptTypes) {
+            String mimeType = extensionToMimeType(type);
+            if (mimeType == null || !mimeType.startsWith("image/")) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String extensionToMimeType(String extensionOrType) {
+        if (extensionOrType == null || !extensionOrType.startsWith(".")) {
+            return extensionOrType;
+        }
+        return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extensionOrType.substring(1));
     }
 
     private String getWebViewUrl() {

@@ -1,10 +1,13 @@
 package org.moera.android.js;
 
+import java.util.Collection;
+
 import android.net.Uri;
 import android.util.Log;
 import android.webkit.WebMessage;
 import android.webkit.WebView;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.moera.android.BuildConfig;
@@ -57,6 +60,13 @@ public class JsMessages {
     public void networkChanged() {
         sendMessage(message -> {
             message.put("action", "network-changed");
+        });
+    }
+
+    public void contentSelected(Collection<String> uris) {
+        sendMessage(message -> {
+            message.put("action", "content-selected");
+            message.put("uris", new JSONArray(uris));
         });
     }
 

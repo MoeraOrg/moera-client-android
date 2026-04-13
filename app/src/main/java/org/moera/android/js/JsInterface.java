@@ -2,6 +2,15 @@ package org.moera.android.js;
 
 import static android.content.Context.MODE_PRIVATE;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.Objects;
+import java.util.UUID;
+
 import android.Manifest;
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -9,30 +18,23 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.provider.OpenableColumns;
+import android.util.Base64;
 import android.util.Log;
 import android.webkit.JavascriptInterface;
-
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
-
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.moera.android.BuildConfig;
 import org.moera.android.Preferences;
 import org.moera.android.R;
 import org.moera.android.settings.Settings;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.util.Objects;
-import java.util.UUID;
 
 public class JsInterface {
 
@@ -54,13 +56,11 @@ public class JsInterface {
     private final Context context;
     private final Settings settings;
     private final JsInterfaceCallback callback;
-    private final JsMessages messages;
 
-    public JsInterface(Context context, Settings settings, JsInterfaceCallback callback, JsMessages messages) {
+    public JsInterface(Context context, Settings settings, JsInterfaceCallback callback) {
         this.context = context;
         this.settings = settings;
         this.callback = callback;
-        this.messages = messages;
     }
 
     @JavascriptInterface
@@ -275,6 +275,56 @@ public class JsInterface {
     @JavascriptInterface
     public void log(String text) {
         Log.i(TAG, text);
+    }
+
+    @JavascriptInterface
+    public String getContentUriMimeType(String uriString) {
+        try {
+            return context.getContentResolver().getType(Uri.parse(uriString));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @JavascriptInterface
+    public String getContentUriFileName(String uriString) {
+        try {
+            Uri uri = Uri.parse(uriString);
+            try (
+                Cursor cursor = context.getContentResolver().query(
+                    uri, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null
+                )
+            ) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                    if (nameIndex != -1) {
+                        return cursor.getString(nameIndex);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+        return null;
+    }
+
+    @JavascriptInterface
+    public String readContentUri(String uriString) {
+        try {
+            Uri uri = Uri.parse(uriString);
+            try (InputStream in = context.getContentResolver().openInputStream(uri)) {
+                if (in == null) {
+                    return null;
+                }
+                byte[] bytes = IOUtils.toByteArray(in);
+                return Base64.encodeToString(bytes, Base64.NO_WRAP);
+            }
+        } catch (Exception e) {
+            if (BuildConfig.DEBUG) {
+                Log.e(TAG, "readContentUri() failed", e);
+            }
+            return null;
+        }
     }
 
     @JavascriptInterface
