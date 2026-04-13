@@ -29,6 +29,7 @@ import android.util.Log;
 import android.webkit.JavascriptInterface;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.FileProvider;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.moera.android.BuildConfig;
@@ -140,6 +141,22 @@ public class JsInterface {
         }
     }
 
+    @JavascriptInterface
+    public void saveFile(String url, String fileName, String mimeType) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            permittedSaveFileQ(url, fileName, mimeType);
+        } else if (
+            ActivityCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                == PackageManager.PERMISSION_GRANTED
+        ) {
+            permittedSaveFile(url, fileName, mimeType);
+        } else {
+            if (callback != null) {
+                callback.withWritePermission(() -> permittedSaveFile(url, fileName, mimeType));
+            }
+        }
+    }
+
     private void permittedSaveImage(String url, String mimeType) {
         new Thread(() -> {
             try {
@@ -147,7 +164,7 @@ public class JsInterface {
                 String fileName = UUID.randomUUID().toString() + "." + getImageExtension(url);
                 File directory = Environment.getExternalStoragePublicDirectory(IMAGE_DIRECTORY);
                 if (!directory.exists()) {
-                    directory.mkdir();
+                    directory.mkdirs();
                 }
                 File file = new File(directory, fileName);
                 IOUtils.copy(in, file);
@@ -218,6 +235,97 @@ public class JsInterface {
                 }
             }
         }).start();
+    }
+
+    private void permittedSaveFile(String url, String fileName, String mimeType) {
+        new Thread(() -> {
+            try {
+                URL in = new URL(url);
+                File directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                if (!directory.exists()) {
+                    directory.mkdirs();
+                }
+                File file = new File(directory, fileName);
+                IOUtils.copy(in, file);
+
+                if (callback != null) {
+                    callback.toast(context.getString(R.string.save_file_success));
+                }
+
+                if ("application/pdf".equals(mimeType)) {
+                    Uri fileUri = FileProvider.getUriForFile(context, context.getPackageName() + ".fileprovider", file);
+                    openFile(fileUri, mimeType);
+                }
+            } catch (IOException e) {
+                if (BuildConfig.DEBUG) {
+                    Log.e(TAG, "File saving failed", e);
+                }
+                if (callback != null) {
+                    callback.toast(context.getString(R.string.save_file_failure));
+                }
+            }
+        }).start();
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.Q)
+    private void permittedSaveFileQ(String url, String fileName, String mimeType) {
+        new Thread(() -> {
+            try {
+                ContentResolver resolver = context.getContentResolver();
+
+                ContentValues details = new ContentValues();
+                details.put(MediaStore.Downloads.DISPLAY_NAME, fileName);
+                details.put(MediaStore.Downloads.MIME_TYPE, mimeType);
+                details.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+                details.put(MediaStore.Downloads.IS_PENDING, 1);
+
+                Uri downloadsCollection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL);
+                Uri media = resolver.insert(downloadsCollection, details);
+
+                URL in = new URL(url);
+                if (media == null) {
+                    throw new MediaStorageException("resolver.insert() returned null");
+                }
+                OutputStream out = resolver.openOutputStream(media);
+                if (out == null) {
+                    throw new MediaStorageException("Cannot open output stream");
+                }
+                IOUtils.copy(in, out);
+
+                details.clear();
+                details.put(MediaStore.Downloads.IS_PENDING, 0);
+                resolver.update(media, details, null, null);
+
+                if (callback != null) {
+                    callback.toast(context.getString(R.string.save_file_success));
+                }
+
+                if ("application/pdf".equals(mimeType)) {
+                    openFile(media, mimeType);
+                }
+            } catch (IOException | MediaStorageException e) {
+                if (BuildConfig.DEBUG) {
+                    Log.e(TAG, "File saving failed", e);
+                }
+                if (callback != null) {
+                    callback.toast(context.getString(R.string.save_file_failure));
+                }
+            }
+        }).start();
+    }
+
+    private void openFile(Uri uri, String mimeType) {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setDataAndType(uri, mimeType);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            context.startActivity(intent);
+        } catch (Exception e) {
+            if (BuildConfig.DEBUG) {
+                Log.e(TAG, "Cannot open file", e);
+            }
+        }
     }
 
     private String getImageExtension(String url) {

@@ -7,4 +7,6 @@
     <string name="url_no_handler">Невозможно открыть этот URL</string>
     <string name="save_image_success">Картинка сохранена в галерее</string>
     <string name="save_image_failure">Не удалось сохранить картинку</string>
+    <string name="save_file_success">Файл сохранен</string>
+    <string name="save_file_failure">Не удалось сохранить файл</string>
 </resources>
