@@ -1,5 +1,12 @@
 package org.moera.android;
 
+import java.io.IOException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.ActivityNotFoundException;
@@ -17,14 +24,12 @@ import android.os.ext.SdkExtensions;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
-import android.webkit.MimeTypeMap;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
-
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
@@ -41,10 +46,8 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
-
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.firebase.messaging.FirebaseMessaging;
-
 import org.moera.android.api.NodeApi;
 import org.moera.android.js.JsInterface;
 import org.moera.android.js.JsInterfaceCallback;
@@ -53,14 +56,8 @@ import org.moera.android.operations.StoryOperations;
 import org.moera.android.settings.Settings;
 import org.moera.android.util.Consumer;
 import org.moera.android.util.Debounced;
+import org.moera.android.util.MimeUtil;
 import org.moera.lib.UniversalLocation;
-
-import java.io.IOException;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -511,7 +508,7 @@ public class MainActivity extends AppCompatActivity {
                 callback.setJsMessages(jsMessages);
 
                 try {
-                    if (isImagesOnly(acceptTypes)) {
+                    if (MimeUtil.isImagesOnly(acceptTypes)) {
                         var launcher = multi ? pickImagesLauncher : pickImageLauncher;
                         launcher.launch(
                             new PickVisualMediaRequest.Builder()
@@ -521,7 +518,7 @@ public class MainActivity extends AppCompatActivity {
                     } else {
                         var launcher = multi ? pickFilesLauncher : pickFileLauncher;
                         String mimeType = acceptTypes != null && acceptTypes.length > 0 && !acceptTypes[0].isEmpty()
-                                ? extensionToMimeType(acceptTypes[0]) : null;
+                                ? MimeUtil.extensionToMimeType(acceptTypes[0]) : null;
                         if (mimeType == null) {
                             mimeType = "*/*";
                         }
@@ -547,26 +544,6 @@ public class MainActivity extends AppCompatActivity {
         });
 
         webView.loadUrl(getWebViewUrl());
-    }
-
-    private boolean isImagesOnly(String[] acceptTypes) {
-        if (acceptTypes == null || acceptTypes.length == 0) {
-            return false;
-        }
-        for (String type : acceptTypes) {
-            String mimeType = extensionToMimeType(type);
-            if (mimeType == null || !mimeType.startsWith("image/")) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private String extensionToMimeType(String extensionOrType) {
-        if (extensionOrType == null || !extensionOrType.startsWith(".")) {
-            return extensionOrType;
-        }
-        return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extensionOrType.substring(1));
     }
 
     private String getWebViewUrl() {
