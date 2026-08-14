@@ -6,6 +6,7 @@ import android.content.Intent;
 
 import androidx.core.app.NotificationManagerCompat;
 
+import org.moera.android.media.MediaUploadOperations;
 import org.moera.android.operations.StoryOperations;
 
 import java.util.Objects;
@@ -19,6 +20,11 @@ public class MainReceiver extends BroadcastReceiver {
             String tag = intent.getDataString();
             NotificationManagerCompat.from(context).cancel(tag, 0);
             StoryOperations.storyMarkAsRead(context, storyId);
+        } else if (Objects.equals(intent.getAction(), Actions.ACTION_CANCEL_MEDIA_UPLOAD)) {
+            String mediaId = intent.getStringExtra(Actions.EXTRA_MEDIA_UPLOAD_ID);
+            if (mediaId != null) {
+                MediaUploadOperations.getInstance(context).cancel(mediaId);
+            }
         }
     }
 

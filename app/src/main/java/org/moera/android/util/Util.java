@@ -38,4 +38,24 @@ public class Util {
         }
     }
 
+    public static String rfc5987Encode(String value) {
+        StringBuilder encoded = new StringBuilder();
+        for (byte current : value.getBytes(StandardCharsets.UTF_8)) {
+            int character = current & 0xff;
+            if (
+                character >= 'a' && character <= 'z'
+                || character >= 'A' && character <= 'Z'
+                || character >= '0' && character <= '9'
+                || "!#$&+-.^_`|~".indexOf(character) >= 0
+            ) {
+                encoded.append((char) character);
+            } else {
+                encoded.append('%');
+                encoded.append(Character.toUpperCase(Character.forDigit(character >>> 4, 16)));
+                encoded.append(Character.toUpperCase(Character.forDigit(character & 0xf, 16)));
+            }
+        }
+        return encoded.toString();
+    }
+
 }

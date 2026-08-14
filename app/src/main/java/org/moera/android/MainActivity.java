@@ -24,11 +24,13 @@ import android.os.ext.SdkExtensions;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
 import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultCallback;
@@ -45,12 +47,19 @@ import androidx.core.os.LocaleListCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.firebase.messaging.FirebaseMessaging;
 import org.moera.android.js.JsInterface;
 import org.moera.android.js.JsInterfaceCallback;
 import org.moera.android.js.JsMessages;
+import org.moera.android.media.MediaSelectionCoordinator;
+import org.moera.android.media.MediaUploadListener;
+import org.moera.android.media.MediaUploadOperations;
+import org.moera.android.media.SelectedMediaStore;
+import org.moera.android.media.WebClientCapabilities;
+import org.moera.android.media.database.MediaUploadEntity;
 import org.moera.android.operations.PushRelayOperations;
 import org.moera.android.operations.StoryOperations;
 import org.moera.android.settings.Settings;
@@ -93,9 +102,13 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onActivityResult(Boolean isGranted) {
             if (isGranted) {
-                runnable.run();
+                if (runnable != null) {
+                    runnable.run();
+                }
+                runnable = null;
                 return;
             }
+            runnable = null;
 
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
                 return; // Will never be used in this situation anyway
@@ -117,13 +130,38 @@ public class MainActivity extends AppCompatActivity {
 
         protected ValueCallback<Uri[]> callback;
         protected JsMessages jsMessages;
+        protected MediaSelectionCoordinator mediaSelectionCoordinator;
+        protected boolean nativeSelection;
+        protected String[] acceptTypes;
 
-        public void setCallback(ValueCallback<Uri[]> callback) {
+        public void configure(
+            ValueCallback<Uri[]> callback,
+            JsMessages jsMessages,
+            MediaSelectionCoordinator mediaSelectionCoordinator,
+            boolean nativeSelection,
+            String[] acceptTypes
+        ) {
+            if (this.callback != null) {
+                this.callback.onReceiveValue(null);
+            }
             this.callback = callback;
+            this.jsMessages = jsMessages;
+            this.mediaSelectionCoordinator = mediaSelectionCoordinator;
+            this.nativeSelection = nativeSelection;
+            this.acceptTypes = acceptTypes != null ? acceptTypes.clone() : new String[0];
         }
 
-        public void setJsMessages(JsMessages jsMessages) {
-            this.jsMessages = jsMessages;
+        protected ValueCallback<Uri[]> takeCallback() {
+            ValueCallback<Uri[]> result = callback;
+            callback = null;
+            return result;
+        }
+
+        public void cancel() {
+            ValueCallback<Uri[]> callback = takeCallback();
+            if (callback != null) {
+                callback.onReceiveValue(null);
+            }
         }
 
     }
@@ -132,8 +170,17 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onActivityResult(Uri uri) {
+            ValueCallback<Uri[]> callback = takeCallback();
+            if (callback == null) {
+                return;
+            }
             if (uri == null) {
                 callback.onReceiveValue(null);
+                return;
+            }
+            if (nativeSelection) {
+                callback.onReceiveValue(null);
+                mediaSelectionCoordinator.select(List.of(uri), acceptTypes);
                 return;
             }
             if (Objects.equals(uri.getScheme(), "content")) {
@@ -150,8 +197,17 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onActivityResult(List<Uri> uris) {
+            ValueCallback<Uri[]> callback = takeCallback();
+            if (callback == null) {
+                return;
+            }
             if (uris == null || uris.isEmpty()) {
                 callback.onReceiveValue(null);
+                return;
+            }
+            if (nativeSelection) {
+                callback.onReceiveValue(null);
+                mediaSelectionCoordinator.select(uris, acceptTypes);
                 return;
             }
 
@@ -177,8 +233,8 @@ public class MainActivity extends AppCompatActivity {
 
     private ActivityResultLauncher<String> writePermissionLauncher;
     private ActivityResultLauncher<String> notificationsPermissionLauncher;
-    private ActivityResultLauncher<String> pickFileLauncher;
-    private ActivityResultLauncher<String> pickFilesLauncher;
+    private ActivityResultLauncher<String[]> pickFileLauncher;
+    private ActivityResultLauncher<String[]> pickFilesLauncher;
     private ActivityResultLauncher<PickVisualMediaRequest> pickImageLauncher;
     private ActivityResultLauncher<PickVisualMediaRequest> pickImagesLauncher;
     private final WritePermissionCallback writePermissionCallback = new WritePermissionCallback();
@@ -188,6 +244,14 @@ public class MainActivity extends AppCompatActivity {
     private final PickFilesCallback pickFilesCallback = new PickFilesCallback();
     private Settings settings;
     private JsMessages jsMessages;
+    private WebClientCapabilities webClientCapabilities;
+    private SelectedMediaStore selectedMediaStore;
+    private MediaSelectionCoordinator mediaSelectionCoordinator;
+    private MediaUploadOperations mediaUploadOperations;
+    private MediaUploadListener mediaUploadListener;
+    private View fullscreenView;
+    private WebChromeClient.CustomViewCallback fullscreenViewCallback;
+    private int systemBarsBehavior;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -219,6 +283,23 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         GoogleApiAvailability.getInstance().makeGooglePlayServicesAvailable(this);
         MainMessagingService.cancelAllNotifications(this);
+        if (mediaUploadOperations != null) {
+            mediaUploadOperations.reconcileScheduledUploads();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        hideFullscreenView();
+        pickFileCallback.cancel();
+        pickFilesCallback.cancel();
+        if (mediaSelectionCoordinator != null) {
+            mediaSelectionCoordinator.close();
+        }
+        if (mediaUploadOperations != null && mediaUploadListener != null) {
+            mediaUploadOperations.removeListener(mediaUploadListener);
+        }
+        super.onDestroy();
     }
 
     private boolean loadSettings() {
@@ -261,11 +342,11 @@ public class MainActivity extends AppCompatActivity {
             pickFilesCallback
         );
         pickFileLauncher = registerForActivityResult(
-            new ActivityResultContracts.GetContent(),
+            new ActivityResultContracts.OpenDocument(),
             pickFileCallback
         );
         pickFilesLauncher = registerForActivityResult(
-            new ActivityResultContracts.GetMultipleContents(),
+            new ActivityResultContracts.OpenMultipleDocuments(),
             pickFilesCallback
         );
     }
@@ -314,6 +395,25 @@ public class MainActivity extends AppCompatActivity {
         notificationsPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
     }
 
+    private void requestUploadNotificationPermission() {
+        if (
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+            || ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED
+        ) {
+            return;
+        }
+        SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
+        if (prefs.getBoolean(Preferences.UPLOAD_NOTIFICATION_PERMISSION_REQUESTED, false)) {
+            return;
+        }
+        prefs.edit().putBoolean(Preferences.UPLOAD_NOTIFICATION_PERMISSION_REQUESTED, true).apply();
+        runOnUiThread(() -> {
+            notificationPermissionCallback.setRunnable(null);
+            notificationsPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+        });
+    }
+
     private void registerWithFcm() {
         FirebaseMessaging.getInstance().register().addOnCompleteListener(
             registrationTask -> {
@@ -335,6 +435,11 @@ public class MainActivity extends AppCompatActivity {
 
         webView.getSettings().setJavaScriptEnabled(true);
         JsInterfaceCallback jsCallback = new JsInterfaceCallback() {
+
+            @Override
+            public void requestUploadNotificationPermission() {
+                MainActivity.this.requestUploadNotificationPermission();
+            }
 
             @Override
             public void updatePushRelay() {
@@ -403,13 +508,74 @@ public class MainActivity extends AppCompatActivity {
             }
 
         };
-        jsMessages = new JsMessages(webView, getWebClientUri());
-        webView.addJavascriptInterface(new JsInterface(this, settings, jsCallback), "Android");
+        webClientCapabilities = new WebClientCapabilities();
+        jsMessages = new JsMessages(webView, getWebClientUri(), webClientCapabilities);
+        selectedMediaStore = new SelectedMediaStore(this);
+        mediaUploadOperations = MediaUploadOperations.getInstance(
+            this, Boolean.TRUE.equals(settings.getBool("mobile.developer"))
+        );
+        mediaUploadListener = new MediaUploadListener() {
+
+            @Override
+            public void onState(MediaUploadEntity upload) {
+                jsMessages.mediaUploadState(upload);
+            }
+
+            @Override
+            public void onProgress(MediaUploadEntity upload) {
+                jsMessages.mediaUploadProgress(upload);
+            }
+
+            @Override
+            public void onCompleted(MediaUploadEntity upload) {
+                jsMessages.mediaUploadCompleted(upload);
+            }
+
+            @Override
+            public void onFailed(MediaUploadEntity upload) {
+                jsMessages.mediaUploadFailed(upload);
+            }
+
+            @Override
+            public void onTransientFailure(String id, String draftId, String code, String message) {
+                jsMessages.mediaUploadFailed(
+                    id,
+                    draftId,
+                    code,
+                    message,
+                    false,
+                    false
+                );
+            }
+
+        };
+        mediaUploadOperations.addListener(mediaUploadListener);
+        mediaUploadOperations.cleanupExpiredSelections(Instant.now().minus(1, ChronoUnit.DAYS).toEpochMilli());
+        mediaSelectionCoordinator = new MediaSelectionCoordinator(
+            this, selectedMediaStore, jsMessages, webClientCapabilities
+        );
+        webView.addJavascriptInterface(
+            new JsInterface(
+                this,
+                settings,
+                jsCallback,
+                webClientCapabilities,
+                mediaUploadOperations
+            ),
+            "Android"
+        );
         webView.getSettings().setDomStorageEnabled(true);
         webView.getSettings().setAllowFileAccess(true);
         webView.getSettings().setAllowContentAccess(true);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         webView.setWebViewClient(new WebViewClient() {
+
+            @Override
+            public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                webClientCapabilities.reset();
+                pickFileCallback.cancel();
+                pickFilesCallback.cancel();
+            }
 
             @Override
             public void onPageFinished(WebView view, String url) {
@@ -443,6 +609,16 @@ public class MainActivity extends AppCompatActivity {
         webView.setWebChromeClient(new WebChromeClient() {
 
             @Override
+            public void onShowCustomView(View view, CustomViewCallback callback) {
+                showFullscreenView(view, callback);
+            }
+
+            @Override
+            public void onHideCustomView() {
+                hideFullscreenView();
+            }
+
+            @Override
             public boolean onShowFileChooser(
                 WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams
             ) {
@@ -450,29 +626,37 @@ public class MainActivity extends AppCompatActivity {
                 String[] acceptTypes = fileChooserParams.getAcceptTypes();
 
                 var callback = multi ? pickFilesCallback : pickFileCallback;
-                callback.setCallback(filePathCallback);
-                callback.setJsMessages(jsMessages);
+                callback.configure(
+                    filePathCallback,
+                    jsMessages,
+                    mediaSelectionCoordinator,
+                    webClientCapabilities.isNativeMediaUploadEnabled(),
+                    acceptTypes
+                );
 
                 try {
+                    ActivityResultContracts.PickVisualMedia.VisualMediaType visualMediaType = null;
                     if (MimeUtil.isImagesOnly(acceptTypes)) {
+                        visualMediaType = ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE;
+                    } else if (MimeUtil.isVideosOnly(acceptTypes)) {
+                        visualMediaType = ActivityResultContracts.PickVisualMedia.VideoOnly.INSTANCE;
+                    } else if (MimeUtil.isImagesAndVideosOnly(acceptTypes)) {
+                        visualMediaType = ActivityResultContracts.PickVisualMedia.ImageAndVideo.INSTANCE;
+                    }
+                    if (visualMediaType != null) {
                         var launcher = multi ? pickImagesLauncher : pickImageLauncher;
                         launcher.launch(
                             new PickVisualMediaRequest.Builder()
-                                .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
+                                .setMediaType(visualMediaType)
                                 .build()
                         );
                     } else {
                         var launcher = multi ? pickFilesLauncher : pickFileLauncher;
-                        String mimeType = acceptTypes != null && acceptTypes.length > 0 && !acceptTypes[0].isEmpty()
-                                ? MimeUtil.extensionToMimeType(acceptTypes[0]) : null;
-                        if (mimeType == null) {
-                            mimeType = "*/*";
-                        }
-                        launcher.launch(mimeType);
+                        launcher.launch(MimeUtil.acceptedMimeTypes(acceptTypes));
                     }
                 } catch (ActivityNotFoundException e) {
                     Toast.makeText(MainActivity.this, getString(R.string.url_no_handler), Toast.LENGTH_SHORT).show();
-                    filePathCallback.onReceiveValue(null);
+                    callback.cancel();
                 }
 
                 return true;
@@ -484,12 +668,66 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void handleOnBackPressed() {
+                if (fullscreenView != null) {
+                    hideFullscreenView();
+                    return;
+                }
                 jsMessages.back();
             }
 
         });
 
         webView.loadUrl(getWebViewUrl());
+    }
+
+    private void showFullscreenView(View view, WebChromeClient.CustomViewCallback callback) {
+        if (fullscreenView != null) {
+            callback.onCustomViewHidden();
+            return;
+        }
+
+        fullscreenView = view;
+        fullscreenViewCallback = callback;
+
+        FrameLayout container = findViewById(R.id.fullscreenContainer);
+        container.addView(
+            view,
+            new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        );
+        findViewById(R.id.swipeRefreshLayout).setVisibility(View.GONE);
+        container.setVisibility(View.VISIBLE);
+
+        WindowInsetsControllerCompat insetsController = WindowCompat.getInsetsController(getWindow(), container);
+        systemBarsBehavior = insetsController.getSystemBarsBehavior();
+        insetsController.setSystemBarsBehavior(
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        );
+        insetsController.hide(WindowInsetsCompat.Type.systemBars());
+    }
+
+    private void hideFullscreenView() {
+        if (fullscreenView == null) {
+            return;
+        }
+
+        View view = fullscreenView;
+        WebChromeClient.CustomViewCallback callback = fullscreenViewCallback;
+        fullscreenView = null;
+        fullscreenViewCallback = null;
+
+        FrameLayout container = findViewById(R.id.fullscreenContainer);
+        container.removeView(view);
+        container.setVisibility(View.GONE);
+        findViewById(R.id.swipeRefreshLayout).setVisibility(View.VISIBLE);
+
+        WindowInsetsControllerCompat insetsController = WindowCompat.getInsetsController(getWindow(), container);
+        insetsController.setSystemBarsBehavior(systemBarsBehavior);
+        insetsController.show(WindowInsetsCompat.Type.systemBars());
+
+        callback.onCustomViewHidden();
     }
 
     private String getWebViewUrl() {

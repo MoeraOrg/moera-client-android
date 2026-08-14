@@ -15,6 +15,7 @@ public class Preferences {
     public static final String PUSH_RELAY_UPDATED_AT = "pushRelayUpdatedAt";
     public static final String NOTIFICATION_PERMISSION_ASK_DELAY = "notificationPermissionAskDelay";
     public static final String NOTIFICATION_PERMISSION_NEXT_ASK = "notificationPermissionNextAsk";
+    public static final String UPLOAD_NOTIFICATION_PERMISSION_REQUESTED = "uploadNotificationPermissionRequested";
     public static final String SETTINGS = "settings";
 
 }

@@ -9,4 +9,10 @@
     <string name="save_image_failure">Не вдалося зберегти картинку</string>
     <string name="save_file_success">Файл збережено</string>
     <string name="save_file_failure">Не вдалося зберегти файл</string>
+    <string name="media_upload_channel_name">Завантаження медіафайлів</string>
+    <string name="media_upload_channel_description">Перебіг завантаження великих медіафайлів і документів</string>
+    <string name="media_upload_in_progress">Завантаження: %1$s</string>
+    <string name="media_upload_completed">Завантажено: %1$s</string>
+    <string name="media_upload_failed">Не вдалося завантажити: %1$s</string>
+    <string name="media_upload_cancel">Скасувати</string>
 </resources>

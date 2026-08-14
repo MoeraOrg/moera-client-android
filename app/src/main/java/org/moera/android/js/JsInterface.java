@@ -35,7 +35,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.moera.android.BuildConfig;
 import org.moera.android.Preferences;
 import org.moera.android.R;
+import org.moera.android.media.MediaUploadOperations;
+import org.moera.android.media.WebClientCapabilities;
 import org.moera.android.settings.Settings;
+import org.json.JSONException;
 
 public class JsInterface {
 
@@ -52,16 +55,26 @@ public class JsInterface {
     private static final String IMAGE_DIRECTORY = Environment.DIRECTORY_PICTURES + File.separator + "Moera";
     private static final String APP_FLAVOR_GOOGLE_PLAY = "google-play";
     private static final String APP_FLAVOR_APK = "apk";
-    private static final int API_VERSION = 2;
+    private static final int API_VERSION = 3;
 
     private final Context context;
     private final Settings settings;
     private final JsInterfaceCallback callback;
+    private final WebClientCapabilities webClientCapabilities;
+    private final MediaUploadOperations mediaUploadOperations;
 
-    public JsInterface(Context context, Settings settings, JsInterfaceCallback callback) {
+    public JsInterface(
+        Context context,
+        Settings settings,
+        JsInterfaceCallback callback,
+        WebClientCapabilities webClientCapabilities,
+        MediaUploadOperations mediaUploadOperations
+    ) {
         this.context = context;
         this.settings = settings;
         this.callback = callback;
+        this.webClientCapabilities = webClientCapabilities;
+        this.mediaUploadOperations = mediaUploadOperations;
     }
 
     @JavascriptInterface
@@ -378,6 +391,62 @@ public class JsInterface {
     @JavascriptInterface
     public int getApiVersion() {
         return API_VERSION;
+    }
+
+    @JavascriptInterface
+    public void setWebClientCapabilities(String json) {
+        try {
+            webClientCapabilities.set(json);
+        } catch (JSONException e) {
+            webClientCapabilities.reset();
+        }
+    }
+
+    @JavascriptInterface
+    public void startMediaUpload(String id, boolean downsize, String draftId) {
+        if (webClientCapabilities.isNativeMediaUploadEnabled()) {
+            mediaUploadOperations.start(
+                id,
+                downsize,
+                draftId,
+                webClientCapabilities.getClientId(),
+                callback::requestUploadNotificationPermission
+            );
+        }
+    }
+
+    @JavascriptInterface
+    public void assignMediaUploadsToDraft(String draftId) {
+        if (webClientCapabilities.isNativeMediaUploadEnabled()) {
+            mediaUploadOperations.assignToDraft(draftId);
+        }
+    }
+
+    @JavascriptInterface
+    public void cancelMediaUpload(String id) {
+        mediaUploadOperations.cancel(id);
+    }
+
+    @JavascriptInterface
+    public void discardSelectedMedia(String id) {
+        mediaUploadOperations.discardSelected(id);
+    }
+
+    @JavascriptInterface
+    public void requestMediaUploadStates() {
+        if (webClientCapabilities.isNativeMediaUploadEnabled()) {
+            mediaUploadOperations.requestStates();
+        }
+    }
+
+    @JavascriptInterface
+    public void acknowledgeMediaUpload(String id) {
+        mediaUploadOperations.acknowledge(id);
+    }
+
+    @JavascriptInterface
+    public void abandonDraft(String draftId) {
+        mediaUploadOperations.abandonDraft(draftId);
     }
 
     @JavascriptInterface

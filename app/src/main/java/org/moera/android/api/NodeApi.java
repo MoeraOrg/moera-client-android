@@ -23,6 +23,7 @@ public class NodeApi {
     public NodeApi(Context context) {
         this.context = context;
         homeNode = new MoeraNode(new OkHttpTransport(), getHomeLocation());
+        homeNode.userAgent("Moera client for Android/" + BuildConfig.VERSION_NAME);
     }
 
     private String getHomeLocation() {

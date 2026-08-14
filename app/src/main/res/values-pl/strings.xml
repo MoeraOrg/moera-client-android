@@ -9,4 +9,10 @@
     <string name="save_image_failure">Nie udało się zapisać obrazu</string>
     <string name="save_file_success">Plik został zapisany</string>
     <string name="save_file_failure">Nie udało się zapisać pliku</string>
+    <string name="media_upload_channel_name">Przesyłanie multimediów</string>
+    <string name="media_upload_channel_description">Postęp przesyłania dużych multimediów i dokumentów</string>
+    <string name="media_upload_in_progress">Przesyłanie: %1$s</string>
+    <string name="media_upload_completed">Przesłano: %1$s</string>
+    <string name="media_upload_failed">Nie udało się przesłać: %1$s</string>
+    <string name="media_upload_cancel">Anuluj</string>
 </resources>

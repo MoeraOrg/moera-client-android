@@ -4,6 +4,8 @@ public interface JsInterfaceCallback {
 
     void updatePushRelay();
 
+    void requestUploadNotificationPermission();
+
     void onBack();
 
     String getSharedText();

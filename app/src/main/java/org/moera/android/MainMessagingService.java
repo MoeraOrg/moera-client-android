@@ -37,6 +37,7 @@ import com.bumptech.glide.request.transition.Transition;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 import org.apache.commons.lang3.ObjectUtils;
+import org.moera.android.media.MediaUploadNotifications;
 import org.moera.android.operations.PushRelayOperations;
 import org.moera.android.settings.Settings;
 import org.moera.android.util.AvatarUtil;
@@ -122,7 +123,7 @@ public class MainMessagingService extends FirebaseMessagingService {
     }
 
     public static void cancelAllNotifications(Context context) {
-        getNotificationManager(context).cancelAll();
+        MediaUploadNotifications.cancelNonUploadNotifications(context);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
