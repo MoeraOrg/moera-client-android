@@ -48,13 +48,12 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.firebase.messaging.FirebaseMessaging;
-import org.moera.android.api.NodeApi;
 import org.moera.android.js.JsInterface;
 import org.moera.android.js.JsInterfaceCallback;
 import org.moera.android.js.JsMessages;
+import org.moera.android.operations.PushRelayOperations;
 import org.moera.android.operations.StoryOperations;
 import org.moera.android.settings.Settings;
-import org.moera.android.util.Consumer;
 import org.moera.android.util.Debounced;
 import org.moera.android.util.MimeUtil;
 import org.moera.lib.UniversalLocation;
@@ -175,7 +174,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private static final String TAG = MainActivity.class.getSimpleName();
-    private static final long PUSH_RELAY_REFRESH_INTERVAL = 7 * 24 * 60 * 60; // 7 days in seconds
 
     private ActivityResultLauncher<String> writePermissionLauncher;
     private ActivityResultLauncher<String> notificationsPermissionLauncher;
@@ -316,68 +314,16 @@ public class MainActivity extends AppCompatActivity {
         notificationsPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
     }
 
-    private void withFcmRegistrationToken(Consumer<String> callback) {
-        FirebaseMessaging.getInstance().getToken().addOnCompleteListener(
-            task -> {
-                if (!task.isSuccessful()) {
+    private void registerWithFcm() {
+        FirebaseMessaging.getInstance().register().addOnCompleteListener(
+            registrationTask -> {
+                if (!registrationTask.isSuccessful()) {
                     if (BuildConfig.DEBUG) {
-                        Log.w(TAG, "Fetching FCM registration token failed", task.getException());
+                        Log.w(TAG, "FCM registration failed", registrationTask.getException());
                     }
-                    return;
-                }
-                String fcmToken = task.getResult();
-                if (fcmToken != null) {
-                    callback.accept(fcmToken);
                 }
             }
         );
-    }
-
-    private void registerAtPushRelay(String fcmToken) {
-        SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
-        String homeLocation = prefs.getString(Preferences.HOME_LOCATION, null);
-        String lang = prefs.getString(Preferences.LANG, null);
-        String pushRelayHomeLocation = prefs.getString(Preferences.PUSH_RELAY_HOME_LOCATION, null);
-        String pushRelayClientId = prefs.getString(Preferences.PUSH_RELAY_CLIENT_ID, null);
-        String pushRelayLang = prefs.getString(Preferences.PUSH_RELAY_LANG, null);
-
-        if (
-            !Objects.equals(homeLocation, pushRelayHomeLocation)
-            || !Objects.equals(fcmToken, pushRelayClientId)
-            || !Objects.equals(lang, pushRelayLang)
-        ) {
-            asyncRegisterAtPushRelay(fcmToken, lang, prefs);
-        }
-    }
-
-    private void refreshRegistrationAtPushRelay() {
-        SharedPreferences prefs = getSharedPreferences(Preferences.GLOBAL, MODE_PRIVATE);
-        long updatedAt = prefs.getLong(Preferences.PUSH_RELAY_UPDATED_AT, 0);
-        if (System.currentTimeMillis() / 1000 - updatedAt < PUSH_RELAY_REFRESH_INTERVAL) {
-            return;
-        }
-        String homeLocation = prefs.getString(Preferences.HOME_LOCATION, null);
-        if (homeLocation == null) {
-            return;
-        }
-        String clientId = prefs.getString(Preferences.PUSH_RELAY_CLIENT_ID, null);
-        String lang = prefs.getString(Preferences.PUSH_RELAY_LANG, null);
-        asyncRegisterAtPushRelay(clientId, lang, prefs);
-    }
-
-    private void asyncRegisterAtPushRelay(String fcmToken, String lang, SharedPreferences prefs) {
-        new Thread(() -> {
-            NodeApi nodeApi = new NodeApi(this);
-            nodeApi.registerAtPushRelay(fcmToken, lang);
-
-            SharedPreferences.Editor editPrefs = prefs.edit();
-            String homeLocation = prefs.getString(Preferences.HOME_LOCATION, null);
-            editPrefs.putString(Preferences.PUSH_RELAY_HOME_LOCATION, homeLocation);
-            editPrefs.putString(Preferences.PUSH_RELAY_CLIENT_ID, fcmToken);
-            editPrefs.putString(Preferences.PUSH_RELAY_LANG, lang);
-            editPrefs.putLong(Preferences.PUSH_RELAY_UPDATED_AT, System.currentTimeMillis() / 1000);
-            editPrefs.apply();
-        }).start();
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -394,7 +340,7 @@ public class MainActivity extends AppCompatActivity {
             public void updatePushRelay() {
                 runOnUiThread(
                     () -> withNotificationsPermissions(
-                        () -> withFcmRegistrationToken(MainActivity.this::registerAtPushRelay)
+                        MainActivity.this::registerWithFcm
                     )
                 );
             }
@@ -615,7 +561,7 @@ public class MainActivity extends AppCompatActivity {
     private void initPush() {
         MainMessagingService.cancelAllNotifications(this);
         MainMessagingService.createNotificationChannel(this);
-        refreshRegistrationAtPushRelay();
+        PushRelayOperations.refresh(this);
     }
 
     private Uri getWebClientUri() {

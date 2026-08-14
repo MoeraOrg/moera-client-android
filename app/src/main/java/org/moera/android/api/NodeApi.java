@@ -6,6 +6,7 @@ import android.util.Log;
 
 import org.moera.android.BuildConfig;
 import org.moera.android.Preferences;
+import org.moera.lib.http.OkHttpTransport;
 import org.moera.lib.node.MoeraNode;
 import org.moera.lib.node.exception.MoeraNodeException;
 import org.moera.lib.node.types.PushRelayClientAttributes;
@@ -21,7 +22,7 @@ public class NodeApi {
 
     public NodeApi(Context context) {
         this.context = context;
-        homeNode = new MoeraNode(getHomeLocation());
+        homeNode = new MoeraNode(new OkHttpTransport(), getHomeLocation());
     }
 
     private String getHomeLocation() {

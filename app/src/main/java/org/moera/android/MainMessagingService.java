@@ -37,10 +37,10 @@ import com.bumptech.glide.request.transition.Transition;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 import org.apache.commons.lang3.ObjectUtils;
+import org.moera.android.operations.PushRelayOperations;
 import org.moera.android.settings.Settings;
 import org.moera.android.util.AvatarUtil;
 
-@SuppressLint("MissingFirebaseInstanceTokenRefresh")
 public class MainMessagingService extends FirebaseMessagingService {
 
     private static final String TAG = MainMessagingService.class.getSimpleName();
@@ -73,6 +73,28 @@ public class MainMessagingService extends FirebaseMessagingService {
                 Log.i(TAG, "Message data is empty");
             }
         }
+    }
+
+    @Override
+    public void onNewToken(@NonNull String token) {
+        super.onNewToken(token);
+        registerAtPushRelay(token);
+    }
+
+    @Override
+    public void onRegistered(@NonNull String installationId) {
+        super.onRegistered(installationId);
+        registerAtPushRelay(installationId);
+    }
+
+    private void registerAtPushRelay(String clientId) {
+        if (!loadSettings() || !settings.getBool("mobile.notifications.enabled")) {
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !checkNotificationsPermission()) {
+            return;
+        }
+        PushRelayOperations.registerNow(this, clientId);
     }
 
     private boolean loadSettings() {
