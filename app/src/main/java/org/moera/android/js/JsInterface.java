@@ -27,9 +27,12 @@ import android.provider.OpenableColumns;
 import android.util.Base64;
 import android.util.Log;
 import android.webkit.JavascriptInterface;
+import android.webkit.MimeTypeMap;
+import android.webkit.URLUtil;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.FileProvider;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.moera.android.BuildConfig;
@@ -38,6 +41,7 @@ import org.moera.android.R;
 import org.moera.android.media.MediaUploadOperations;
 import org.moera.android.media.WebClientCapabilities;
 import org.moera.android.settings.Settings;
+import org.moera.android.util.MimeUtil;
 import org.json.JSONException;
 
 public class JsInterface {
@@ -53,6 +57,7 @@ public class JsInterface {
     private static final String TAG = JsInterface.class.getSimpleName();
 
     private static final String IMAGE_DIRECTORY = Environment.DIRECTORY_PICTURES + File.separator + "Moera";
+    private static final String VIDEO_DIRECTORY = Environment.DIRECTORY_MOVIES + File.separator + "Moera";
     private static final String APP_FLAVOR_GOOGLE_PLAY = "google-play";
     private static final String APP_FLAVOR_APK = "apk";
     private static final int API_VERSION = 3;
@@ -140,22 +145,21 @@ public class JsInterface {
 
     @JavascriptInterface
     public void saveImage(String url, String mimeType) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            permittedSaveImageQ(url, mimeType);
-        } else if (
-            ActivityCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                == PackageManager.PERMISSION_GRANTED
-        ) {
-            permittedSaveImage(url, mimeType);
-        } else {
-            if (callback != null) {
-                callback.withWritePermission(() -> permittedSaveImage(url, mimeType));
-            }
-        }
+        // The gallery also calls this bridge method for videos.
+        String fileName = MimeUtil.isImageType(mimeType)
+            ? UUID.randomUUID() + "." + getImageExtension(url)
+            : URLUtil.guessFileName(url, null, MimeUtil.toMediaStoreMimeType(mimeType));
+        saveFile(url, fileName, mimeType);
     }
 
     @JavascriptInterface
     public void saveFile(String url, String fileName, String mimeType) {
+        boolean video = MimeUtil.isVideoType(mimeType);
+        if (video || MimeUtil.isImageType(mimeType)) {
+            saveMedia(url, fileName, mimeType, video);
+            return;
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             permittedSaveFileQ(url, fileName, mimeType);
         } else if (
@@ -170,81 +174,126 @@ public class JsInterface {
         }
     }
 
-    private void permittedSaveImage(String url, String mimeType) {
+    private void saveMedia(String url, String fileName, String mimeType, boolean video) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            permittedSaveMediaQ(url, fileName, mimeType, video);
+        } else if (
+            ActivityCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                == PackageManager.PERMISSION_GRANTED
+        ) {
+            permittedSaveMedia(url, fileName, mimeType, video);
+        } else if (callback != null) {
+            callback.withWritePermission(() -> permittedSaveMedia(url, fileName, mimeType, video));
+        }
+    }
+
+    private void permittedSaveMedia(String url, String fileName, String mimeType, boolean video) {
         new Thread(() -> {
+            File file = null;
             try {
                 URL in = new URL(url);
-                String fileName = UUID.randomUUID().toString() + "." + getImageExtension(url);
-                File directory = Environment.getExternalStoragePublicDirectory(IMAGE_DIRECTORY);
+                File directory = Environment.getExternalStoragePublicDirectory(
+                    video ? VIDEO_DIRECTORY : IMAGE_DIRECTORY
+                );
                 if (!directory.exists()) {
                     directory.mkdirs();
                 }
-                File file = new File(directory, fileName);
+                String name = new File(fileName).getName();
+                File candidate = new File(directory, name);
+                file = candidate.createNewFile() ? candidate : File.createTempFile("moera-", "-" + name, directory);
                 IOUtils.copy(in, file);
 
                 ContentResolver resolver = context.getContentResolver();
 
                 ContentValues details = new ContentValues();
-                details.put(MediaStore.Images.Media.DISPLAY_NAME, fileName);
-                details.put(MediaStore.Images.Media.MIME_TYPE, mimeType);
-                details.put(MediaStore.Images.Media.DATA, file.getPath());
+                details.put(MediaStore.MediaColumns.DISPLAY_NAME, file.getName());
+                details.put(MediaStore.MediaColumns.MIME_TYPE, MimeUtil.toMediaStoreMimeType(mimeType));
+                details.put(MediaStore.MediaColumns.DATA, file.getPath());
 
-                resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, details);
+                Uri collection = video
+                    ? MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                    : MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+                if (resolver.insert(collection, details) == null) {
+                    throw new MediaStorageException("resolver.insert() returned null");
+                }
 
                 if (callback != null) {
-                    callback.toast(context.getString(R.string.save_image_success));
+                    callback.toast(context.getString(video ? R.string.save_video_success : R.string.save_image_success));
                 }
-            } catch (IOException e) {
+            } catch (IOException | MediaStorageException | IllegalArgumentException | SecurityException e) {
+                if (file != null && !FileUtils.deleteQuietly(file) && BuildConfig.DEBUG) {
+                    Log.e(TAG, "Cannot remove incomplete media: " + file);
+                }
                 if (BuildConfig.DEBUG) {
-                    Log.e(TAG, "Image saving failed", e);
+                    Log.e(TAG, "Media saving failed", e);
                 }
                 if (callback != null) {
-                    callback.toast(context.getString(R.string.save_image_failure));
+                    callback.toast(context.getString(video ? R.string.save_video_failure : R.string.save_image_failure));
                 }
             }
         }).start();
     }
 
     @RequiresApi(api = Build.VERSION_CODES.Q)
-    private void permittedSaveImageQ(String url, String mimeType) {
+    private void permittedSaveMediaQ(String url, String fileName, String mimeType, boolean video) {
         new Thread(() -> {
+            ContentResolver resolver = context.getContentResolver();
+            Uri media = null;
             try {
-                String fileName = UUID.randomUUID().toString() + "." + getImageExtension(url);
-
-                ContentResolver resolver = context.getContentResolver();
-
+                String mediaMimeType = MimeUtil.toMediaStoreMimeType(mimeType);
                 ContentValues details = new ContentValues();
-                details.put(MediaStore.Images.Media.DISPLAY_NAME, fileName);
-                details.put(MediaStore.Images.Media.MIME_TYPE, mimeType);
-                details.put(MediaStore.Images.Media.RELATIVE_PATH, IMAGE_DIRECTORY);
-                details.put(MediaStore.Images.Media.IS_PENDING, 1);
+                details.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName);
+                details.put(MediaStore.MediaColumns.MIME_TYPE, mediaMimeType);
+                details.put(MediaStore.MediaColumns.RELATIVE_PATH, video ? VIDEO_DIRECTORY : IMAGE_DIRECTORY);
+                details.put(MediaStore.MediaColumns.IS_PENDING, 1);
 
-                Uri imagesCollection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL);
-                Uri media = resolver.insert(imagesCollection, details);
+                Uri collection = video
+                    ? MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+                    : MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL);
+                try {
+                    media = resolver.insert(collection, details);
+                } catch (IllegalArgumentException e) {
+                    if (video && !MimeTypeMap.getSingleton().hasMimeType(mediaMimeType)) {
+                        // Some Android versions do not register rare video types such as RealMedia.
+                        permittedSaveFileQ(url, fileName, mimeType);
+                        return;
+                    }
+                    throw e;
+                }
 
                 URL in = new URL(url);
                 if (media == null) {
                     throw new MediaStorageException("resolver.insert() returned null");
                 }
-                OutputStream out = resolver.openOutputStream(media);
-                if (out == null) {
-                    throw new MediaStorageException("Cannot open output stream");
+                try (OutputStream out = resolver.openOutputStream(media)) {
+                    if (out == null) {
+                        throw new MediaStorageException("Cannot open output stream");
+                    }
+                    IOUtils.copy(in, out);
                 }
-                IOUtils.copy(in, out);
 
                 details.clear();
-                details.put(MediaStore.Images.Media.IS_PENDING, 0);
+                details.put(MediaStore.MediaColumns.IS_PENDING, 0);
                 resolver.update(media, details, null, null);
 
                 if (callback != null) {
-                    callback.toast(context.getString(R.string.save_image_success));
+                    callback.toast(context.getString(video ? R.string.save_video_success : R.string.save_image_success));
                 }
-            } catch (IOException | MediaStorageException e) {
+            } catch (IOException | MediaStorageException | IllegalArgumentException | SecurityException e) {
+                if (media != null) {
+                    try {
+                        resolver.delete(media, null, null);
+                    } catch (RuntimeException cleanupException) {
+                        if (BuildConfig.DEBUG) {
+                            Log.e(TAG, "Cannot remove incomplete media", cleanupException);
+                        }
+                    }
+                }
                 if (BuildConfig.DEBUG) {
-                    Log.e(TAG, "Image saving failed", e);
+                    Log.e(TAG, "Media saving failed", e);
                 }
                 if (callback != null) {
-                    callback.toast(context.getString(R.string.save_image_failure));
+                    callback.toast(context.getString(video ? R.string.save_video_failure : R.string.save_image_failure));
                 }
             }
         }).start();
@@ -299,11 +348,12 @@ public class JsInterface {
                 if (media == null) {
                     throw new MediaStorageException("resolver.insert() returned null");
                 }
-                OutputStream out = resolver.openOutputStream(media);
-                if (out == null) {
-                    throw new MediaStorageException("Cannot open output stream");
+                try (OutputStream out = resolver.openOutputStream(media)) {
+                    if (out == null) {
+                        throw new MediaStorageException("Cannot open output stream");
+                    }
+                    IOUtils.copy(in, out);
                 }
-                IOUtils.copy(in, out);
 
                 details.clear();
                 details.put(MediaStore.Downloads.IS_PENDING, 0);

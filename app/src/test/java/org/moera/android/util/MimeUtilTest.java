@@ -1,7 +1,9 @@
 package org.moera.android.util;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -35,6 +37,24 @@ public class MimeUtilTest {
             assertTrue(mimeType, MimeUtil.isImagesAndVideosOnly(new String[]{"image/*", mimeType}));
             assertTrue(mimeType, MimeUtil.matches(mimeType, new String[]{"video/*"}));
         }
+    }
+
+    @Test
+    public void normalizesApplicationVideoTypesForMediaStore() {
+        assertEquals("video/mp4", MimeUtil.toMediaStoreMimeType("application/mp4"));
+        assertEquals("video/ogg", MimeUtil.toMediaStoreMimeType("application/ogg"));
+        assertEquals("video/x-matroska", MimeUtil.toMediaStoreMimeType("application/x-matroska"));
+        assertEquals("video/vnd.rn-realvideo", MimeUtil.toMediaStoreMimeType("application/vnd.rn-realmedia"));
+        assertEquals("video/x-ms-asf", MimeUtil.toMediaStoreMimeType("application/vnd.ms-asf"));
+    }
+
+    @Test
+    public void preservesOtherMediaTypesAndNormalizesCase() {
+        assertEquals("video/webm", MimeUtil.toMediaStoreMimeType("video/webm"));
+        assertEquals("video/mp4", MimeUtil.toMediaStoreMimeType("APPLICATION/MP4"));
+        assertEquals("image/jpeg", MimeUtil.toMediaStoreMimeType("IMAGE/JPEG"));
+        assertEquals("application/pdf", MimeUtil.toMediaStoreMimeType("application/pdf"));
+        assertNull(MimeUtil.toMediaStoreMimeType(null));
     }
 
     @Test

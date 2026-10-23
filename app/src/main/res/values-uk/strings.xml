@@ -7,6 +7,8 @@
     <string name="url_no_handler">Неможливо відкрити цей URL</string>
     <string name="save_image_success">Картинка збережена у галереї</string>
     <string name="save_image_failure">Не вдалося зберегти картинку</string>
+    <string name="save_video_success">Відео збережено у галереї</string>
+    <string name="save_video_failure">Не вдалося зберегти відео</string>
     <string name="save_file_success">Файл збережено</string>
     <string name="save_file_failure">Не вдалося зберегти файл</string>
     <string name="media_upload_channel_name">Завантаження медіафайлів</string>

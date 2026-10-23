@@ -18,12 +18,13 @@ public class MimeUtil {
         ".apng", "image/apng",
         ".rm", "application/vnd.rn-realmedia"
     );
-    private static final Set<String> APPLICATION_VIDEO_MIME_TYPES = Set.of(
-        "application/mp4",
-        "application/ogg",
-        "application/x-matroska",
-        "application/vnd.rn-realmedia",
-        "application/vnd.ms-asf"
+
+    private static final Map<String, String> APPLICATION_VIDEO_MIME_TYPES = Map.of(
+        "application/mp4", "video/mp4",
+        "application/ogg", "video/ogg",
+        "application/x-matroska", "video/x-matroska",
+        "application/vnd.rn-realmedia", "video/vnd.rn-realvideo",
+        "application/vnd.ms-asf", "video/x-ms-asf"
     );
 
     public static boolean isImageType(String mimeType) {
@@ -35,7 +36,16 @@ public class MimeUtil {
             return false;
         }
         String normalized = mimeType.toLowerCase(Locale.ROOT);
-        return normalized.startsWith("video/") || APPLICATION_VIDEO_MIME_TYPES.contains(normalized);
+        return normalized.startsWith("video/") || APPLICATION_VIDEO_MIME_TYPES.containsKey(normalized);
+    }
+
+    public static String toMediaStoreMimeType(String mimeType) {
+        if (mimeType == null) {
+            return null;
+        }
+        String normalized = mimeType.toLowerCase(Locale.ROOT);
+        // MediaStore.Video requires a video/* MIME type, including for these containers.
+        return APPLICATION_VIDEO_MIME_TYPES.getOrDefault(normalized, normalized);
     }
 
     public static boolean isImagesOnly(String[] acceptTypes) {

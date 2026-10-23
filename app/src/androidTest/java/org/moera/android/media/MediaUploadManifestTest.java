@@ -12,13 +12,16 @@ import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
+import android.os.Build;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.filters.SdkSuppress;
 import androidx.work.impl.foreground.SystemForegroundService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(AndroidJUnit4.class)
+@SuppressWarnings("deprecation") // The int flag overloads also support Android versions before API 33.
 public class MediaUploadManifestTest {
 
     @Test
@@ -26,7 +29,7 @@ public class MediaUploadManifestTest {
         Context context = ApplicationProvider.getApplicationContext();
         PackageInfo info = context.getPackageManager().getPackageInfo(
             context.getPackageName(),
-            PackageManager.PackageInfoFlags.of(PackageManager.GET_PERMISSIONS)
+            PackageManager.GET_PERMISSIONS
         );
 
         assertTrue(Arrays.asList(info.requestedPermissions).contains(Manifest.permission.RECEIVE_BOOT_COMPLETED));
@@ -40,7 +43,7 @@ public class MediaUploadManifestTest {
         Context context = ApplicationProvider.getApplicationContext();
         ServiceInfo info = context.getPackageManager().getServiceInfo(
             new ComponentName(context, MediaUploadJobService.class),
-            PackageManager.ComponentInfoFlags.of(0)
+            0
         );
 
         assertFalse(info.exported);
@@ -48,12 +51,13 @@ public class MediaUploadManifestTest {
     }
 
     @Test
+    @SdkSuppress(minSdkVersion = Build.VERSION_CODES.Q)
     public void workManagerForegroundServiceUsesDataSyncType()
         throws PackageManager.NameNotFoundException {
         Context context = ApplicationProvider.getApplicationContext();
         ServiceInfo info = context.getPackageManager().getServiceInfo(
             new ComponentName(context, SystemForegroundService.class),
-            PackageManager.ComponentInfoFlags.of(0)
+            0
         );
 
         assertEquals(

@@ -479,8 +479,10 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void withWritePermission(Runnable runnable) {
-                writePermissionCallback.setRunnable(runnable);
-                writePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                runOnUiThread(() -> {
+                    writePermissionCallback.setRunnable(runnable);
+                    writePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                });
             }
 
             @Override
